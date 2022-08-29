@@ -8,10 +8,6 @@ by
 
 Jenna Kristin Honan
 
-
-
-
-
 Committee Chair: Dr. Frank von Hippel
 Committee Members: Drs. Paloma Beamer and Amanda Wilson
 Minor Committee Chair: Dr. Haiquan Li
