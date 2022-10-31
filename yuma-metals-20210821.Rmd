@@ -1,0 +1,306 @@
+---
+title: "Yuma Metals Empirical Distributions and Dimension Reduction - v3"
+author: "Dean Billheimer"
+date: "2021-08-28"
+output:
+html_document:
+self_contained: yes
+---
+
+# Overview
+Explore the distributional properties of (hair?) metals concentrations from
+Yuma, AZ.  Also, use Rmd file to illustrate use of R and markdown for
+computationally reproducible research.
+
+### Changes since 2021-08-21
+1. Values missing all metals are true missing -- insuffucent sample.
+2. Values with missing Hg are also true missing (about 89 of these)
+- fit PCA excluding missing Hg
+- 2nd fit using imputed Hg from other metals data.
+3. drop sample R1108 - missing Cu value - not identified in spectrum. This was included in a batch of
+   samples that failed QA/QC check 
+
+### Major changes since 2020-07-03 version
+1. Updated data from Jonathan Credo - using 2021-08-23 version - sheet 3
+2. Many of the NAs are true missing -
+3. Jonathan re-coded BDL values to DL/sqrt(2)
+4. Re-run the analysis.
+5. Produce a new data set with robust PCA components for Jonathan's use.
+
+### Major changes since 2020-06-23 version
+1. Omit observations where most metals are unmeasured 
+2. Omit Pb206 and 207
+3. What to do about Hg NAs?
+
+### Takeaway
+Standard and robust PCA yield generally similar results.  There are enough
+differences, however, that the robust method would be my first choice for
+data summarization.
+
+# R Stuff
+## Set-up Environment and Read Data
+```{r, setup}
+library(readxl)
+library(tidyverse)
+library(ggplot2)
+
+#setwd
+setwd("~/Desktop/Research/Yuma/Yuma - R Project/")
+
+## read data
+##filename <- c("Yuma Metals Project - EMR 19Jun20.xlsx")
+filename <- c("Yuma Metals Project_EMR_Editted 23Aug2021 mental health & ID removed.xlsx") ## new data set
+tmp <- read_excel(filename, sheet=3)
+dim(tmp) ## 330 222 ## same dimensions
+ names(tmp)
+ ##  [1] "ID"                        "Mn55"                     
+ ##  [3] "Cu65"                      "Cd111"                    
+ ##  [5] "Hg202"                     "Pb206"                    
+ ##  [7] "Pb207"                     "PB208"                    
+ ##  [9] "U238"                      "Site"                     
+ ## [11] "Date"                      "Gender"                   
+
+## head(tmp)
+
+## keep only ID, metals and Site, cast to data frame
+metals <- data.frame(tmp[,c(1:8)])
+names(metals)  ## omitted Pb206 and Pb207
+## metals check format
+```
+
+## Perform Initial Checks and Summary
+
+The summary below shows there are 123 NAs for nearly all of the metals. Hg202 is
+the exception with 212 NAs.
+
+Data exploration shows that the NA pattern is consistent across the metals. If
+one is missing, all are missing.
+
+There are fewer measures at site 1.  More missing values at site 1 (51/78) and
+at site 3 (48/126) compared with site 2 (24/126)
+
+```{r, checks}
+## Initial summary
+summary(metals)
+
+## Number of Observations per Site
+table(metals$Site) ## 78 126 and 126.  Fewer at site 1
+
+## Number of values > BDL by Site
+table(metals$Site, !is.na(metals[,2])) ## Observation indicator by site
+```
+
+
+
+### Metals Concentrations
+The figure below shows metals concentrations on log10 scale.  NA values are
+omitted.
+
+The shape of the Pb distributions are nearly identical (omitted 206 and 207). On the whole, these
+distributions are not as bad as I feared.  All are stil right-skewed after
+transformation, but they do not look pathologic.
+
+```{r, intitialPlots, fig.cap="Metals concentrations - log10 scale"}
+## change from wide to long format for plotting
+
+metals %>% pivot_longer(-c(ID, Site), names_to="Metal", values_to="Concentration") %>%
+    ggplot(aes(x=Concentration)) + geom_density() +
+        scale_x_log10() + facet_wrap(~ Metal) +
+            ggtitle("Distributions of Metals Concentrations (log10 transform)")
+```
+
+### Remove Missing Values
+
+Values labeled as NA across (nearly all metals) are not measured.
+For each observation with missing metals, omit the observation.  In addition
+there are 89 observations with missing Hg values.  We may impute these missing values
+based on site and other observed metals
+
+
+
+*Note* - Other BDL values are replaced with 1/2 the limit of detection.
+
+```{r, omitmissing}
+names(metals)
+metals.obs <- metals[!is.na(metals[,2]), ]
+## for Hg, replace NA and zero with 0.029/sqrt(2)
+##sort(metals.obs[,"Hg202"])
+## Hg.subs <- 0.029 /sqrt(2)
+
+metals.complete.cases <- metals.obs %>% filter(!is.na(Cu65)) %>% 
+    filter(!is.na(Hg202)) ## ID R1108 also missing Hg, other metals observed
+
+dim(metals.complete.cases) ## 111 8 wow - small data set
+summary(metals.complete.cases)
+
+metals.impute.Hg <- metals.obs %>% filter(!is.na(Cu65)) %>% 
+    filter(is.na(Hg202))
+
+metals.complete.log10 <- cbind(ID=metals.complete.cases[,"ID"],
+                               log10(metals.complete.cases[,2:7]),
+                               Site=metals.complete.cases[,"Site"])
+
+summary(metals.complete.log10)
+round(cor(metals.complete.log10[,2:7]), 2)
+
+metals.impute.log10 <- cbind(ID=metals.impute.Hg[,"ID"],
+                               log10(metals.impute.Hg[,2:7]),
+                               Site=metals.impute.Hg[,"Site"])
+summary(metals.impute.log10)
+metals.impute.Hg
+
+### fit regression line for Hg
+Hg.lm <- lm(Hg202 ~ as.factor(Site) + Mn55 + Cu65 + Cd111 + Pb208 + U238,
+            data=metals.complete.log10) 
+qplot(metals.complete.log10[,"Hg202"], predict(Hg.lm))
+qplot( predict(Hg.lm), resid(Hg.lm))
+
+Hg.imputed <-  predict(Hg.lm, newdata=metals.impute.log10)
+
+metals.fillin.log10 <- metals.impute.log10
+metals.fillin.log10[,"Hg202"] <- Hg.imputed
+
+summary(metals.fillin.log10)
+
+## combine complete cases with Hg imputed cases
+metals.allobs.log10 <- rbind(metals.complete.log10, metals.fillin.log10)
+## dim(metals.allobs.log10) ## 206 8  ## OK obs with missing Cu65 is omitted.
+## dim(metals.obs) ## 207 8
+
+## check summary
+summary(metals.allobs.log10)
+```
+
+### Adjusted (Hg Imputed) Concentrations
+New figure with Hg values imputed using regression on other metals
+
+```{r, checkPlots, fig.cap="Metals concentrations - log10 scale"}
+## change from wide to long format for plotting
+
+metals.allobs.log10 %>% pivot_longer(-c(ID, Site), names_to="Metal", values_to="Concentration") %>%
+    ggplot(aes(x=Concentration)) + geom_density() +
+         facet_wrap(~ Metal) +
+            ggtitle("Distributions of Metals Concentrations (missin Hg values imputed, log10 transform)")
+```
+
+## Robust PCA
+
+Now we move on to Robust PCA.  We use the method described by the following papers.
+
+1. Hubert, M., Rousseeuw, P. J., and Vanden Branden, K. (2005), “ROBPCA: A New
+   Approach to Robust Principal Component Analysis,” Technometrics, 47, 64–79. 
+
+2. Engelen, S., Hubert, M. and Vanden Branden, K. (2005), “A Comparison of Three
+   Procedures for Robust PCA in High Dimensions", Austrian Journal of
+   Statistics, 34, 117–126. 
+
+3. Hubert, M., Rousseeuw, P. J., and Verdonck, T. (2009), “Robust PCA for Skewed
+   Data and Its Outlier Map," Computational Statistics & Data Analysis, 53,
+   2264–2274. 
+
+This is implemented in the R package $rospca$
+
+
+The plot below shows results from the robust PCA.  The "Score distance"
+describes the leverage that an indvidual point has in determining the fitted PCA
+surface. The "Orthogonal distance" shows the distance to the fitted surface.
+
+Thus, points 31, 48, 85, and 200 heaviy influence the slope of the PCA surface
+(the loadings). Conversely, point 143 is a large distance from the mass of
+points, but has little influence on the loadings.
+
+The eigenvalues (bottom of the box) show that of the variation is captured
+in PC1 (41%) and PC2 (20%).
+
+```{r, robpca}
+##install.packages("rospca", repos="http://cran.r-project.org")
+library(rospca)
+
+##dim(metals.adjusted)
+##metals.log10 <- as.matrix(log10(metals.adjusted[, 2:7]))
+colnames(metals.allobs.log10)
+
+## round(cor(metals.log10), 2) ## check pairwise correlation
+### == original full PCA
+
+metals.pca <- robpca(metals.allobs.log10[,2:7], k=5, alpha=.7, ndir="all", skew=T)
+
+## Eigenvalues show variation in different components
+cat("Total Variance in PC1 and PC2\n")
+round(metals.pca[[2]]/sum(metals.pca[[2]]), 3) ## variation in PC's is as expected across components
+
+diagPlot(metals.pca)
+```
+
+The eigenvalues show that PC1 and PC2 exhibit the majority of the variance, PC
+3-5 are smaller.  In general, the diagnostic plot suggests that robust PCA is warranted
+
+### PCA Loadings
+The loadings are shown below. 
+
+
+```{r, loadings}
+round(metals.pca$loadings, 3)
+names(metals.allobs.log10[,2:7])
+##plot(metals.pca$loadings, pch=rownames(metals.pca$loadings))
+```
+There are a few of points to notice about the loadings
+
+1. All components of PC1 have the same sign. As before, this suggests a "common" effect to
+   all measurements. For example, all metals tend to be "high" or "low"
+   together. May be caused either by global high-low exposure of inviduals, or
+   by mass spectrometry measurement issues.
+
+2. PC1 has highest loading for Pb208, Mn55, and Cu65
+
+2. For PC2, U238 is the biggest driver. 
+
+
+### PCA Scores for Individuals
+
+Finally, we look at PCA scores by site.  The second figure below shows clearly
+that site 2 has slightly more variation than site 3. But not bad. It appears
+that site 3 may be slightly greater on PC2 than is site 2.
+
+
+```{r, pcaplot}
+##names(metals.allobs.log10)
+metals.pca.df <- data.frame(Site=factor(metals.allobs.log10$Site), metals.pca$scores)
+
+qplot(x=PC1, y=PC2, data=metals.pca.df, col=Site,
+      title="Robust PCA Scores by Site")
+
+qplot(x=PC1, y=PC2, data=metals.pca.df) + ggtitle("Robust PCA Scores by Site") +
+    facet_wrap(~ Site)
+
+
+## dim(metals.pca$scores)
+## dim(metals.allobs.log10)
+## New df on 2021.09.06
+metals.robpca <- cbind(metals.allobs.log10, metals.pca$scores)
+## dim(metals.robpca)
+### about here
+qplot(x=PC1, y=Mn55, data=metals.robpca, col=as.factor(Site))
+qplot(x=PC1, y=Pb208, data=metals.robpca, col=as.factor(Site))
+qplot(x=PC2, y=U238, data=metals.robpca, col=as.factor(Site))
+
+
+write.csv(metals.robpca, file="metals_Impute_log10_PCA_scores.csv", quote=F, row.names=F)
+
+```
+
+```{r, omitHg}
+pca_No_Hg <- robpca(metals.allobs.log10[,c(2:4, 6, 7)], k=5, alpha=.7, ndir="all",
+                    skew=T)
+round(pca_No_Hg[[2]]/sum(pca_No_Hg[[2]]), 3) ## .48  .19 .11
+round(pca_No_Hg$loadings, 2)
+## dim(pca_No_Hg$scores) ## 206 5
+metals.noHg.robpca <- cbind(metals.allobs.log10, pca_No_Hg$scores)
+
+write.csv(metals.noHg.robpca, file="metals_NoHg_log10_PCA_scores.csv", quote=F, row.names=F)
+```
+
+```{r, render, eval=F}
+##system("pwd")
+rmarkdown::render("yuma-metals-20210821.Rmd", 'html_document')
+```

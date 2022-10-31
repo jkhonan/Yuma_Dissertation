@@ -1,0 +1,347 @@
+---
+title: "Exploration"
+author: "Jenna Honan"
+date: "9/2/2022"
+output: html_document
+---
+
+
+# Exploration of Yuma Datasets
+
+Based on meeting with Drs. Dean Billheimer and Frank von Hippel on 9/2/2022, this general analysis will explore how PC1 and PC2 relate to the health outcome data from the survey conducted in Yuma, AZ in 2018.
+
+$Note:$ The following scripts must be run prior to completing this analysis: Data_Clean.Rmd, Yuma_Metals_Analysis.Rmd, Demographics.Rmd, and yuma-metals-20210821.Rmd. This will provide the accurate dataframes used in the following code.
+
+```{r notes}
+#Pb isotopes were removed because they were all heavily collinear. 
+##Perhaps so much so that the isotopes were calculated based on one reference one.
+##Kept Pb208.
+
+#The classic vs. robust PCAs were different enough that Dean felt like keeping the robust version was worth it. Even after logging the data, they are still skewed.
+
+#PC1 is all positively correlated, which shows that it is an analysis of overall exposure.
+
+#PC2 shows which ones are correlated in the same +ve or -ve directions.
+```
+
+## Counts of Cases and Controls for Each Outcome
+These counts include only those who selected "yes" as cases and only those who explicitly selected "no" as controls. Others who chose options such as "don't know" or "prefer not to answer" or those who skipped the question were removed from these counts.
+```{r counts}
+#Numbers for each outcome
+library(dplyr)
+
+Case_Count <- Metals %>% 
+  summarise("Arthritis"=sum(arthritis==1, na.rm = T),
+            "Cancer"=sum(cancer==1, na.rm = T),
+            "Cancer - EMR"=sum(emr_cancer==1, na.rm = T),
+            "Goiter"=sum(goiter==1, na.rm = T),
+            "Goiter - EMR"=sum(emr_goiter==1, na.rm = T),
+            "Thyroid Disease"=sum(thyroid_prob==1, na.rm = T),
+            "Thyroid Disease - EMR"=sum(emr_thyroid_problem==1, na.rm = T),
+            "Hypothyroidism"=sum(hypothyroid==1, na.rm = T),
+            "Hypothyroidism - EMR"= sum(emr_hypothyroidism==1, na.rm = T),
+            "Hyperthyroidism"=sum(hyperthyroid==1, na.rm = T),
+            "Hyperthyroidism - EMR"= sum(emr_hyperthyroidism==1, na.rm = T),
+            "Thyroid Cancer"=sum(thyroid_cancer==1, na.rm = T),
+            "Thyroid Cancer - EMR"=sum(emr_thyroid_cancer==1, na.rm = T),
+            "Diabetes Mellitus"=sum(Diabetes==1, na.rm = T),
+            "Diabetes Mellitus *or* Pre-DM"=sum(Diabetes==1|Diabetes==2, na.rm = T),
+            "Diabetes Mellitus - EMR"=sum(emr_diabetes==1|emr_diabetes==2, na.rm = T),
+            "Gout"=sum(gout==1, na.rm = T),
+            "Congenital Heart Disease (CHD)"=sum(chd==1, na.rm = T),
+            "Weak Kidney"=sum(weak_kidney==1, na.rm = T),
+            "Hypertension"=sum(HTN==1, na.rm = T),
+            "Stroke"=sum(stroke==1, na.rm = T),
+            "Angina"=sum(angnia==1, na.rm = T),
+            "Congestive Heart Failure (CHF)"=sum(chf==1, na.rm = T),
+            "Heart Attack"=sum(heart_attack==1, na.rm = T),
+            "Cholesterol"=sum(Cholesterol==1, na.rm = T),
+            "PCOS"=sum(pos_recode==1, na.rm = T),
+            "PCOS - EMR"=sum(emr_pos==1, na.rm = T),
+            "Undescended Testes"=sum(undescended==1, na.rm = T),
+            "Emphysema"=sum(emphysema==1, na.rm = T),
+            "Autism Spectrum Disorder - EMR"=sum(emr_asd==1, na.rm = T),
+            "Overweight"=sum(Overweight==1, na.rm = T),
+            "Obesity - EMR"=sum(emr_obesity==1, na.rm = T),
+            "Dental Health"=sum(Dental_health==4|Dental_health==5, na.rm = T))
+
+Case_Count <- t(Case_Count)
+colnames(Case_Count) <- c("Cases")
+
+Control_Count <- Metals %>% 
+  summarise("Arthritis"=sum(arthritis==2, na.rm = T),
+            "Cancer"=sum(cancer==2, na.rm = T),
+            "Cancer - EMR"=sum(emr_cancer==0, na.rm = T),
+            "Goiter"=sum(goiter==2, na.rm = T),
+            "Goiter - EMR"=sum(emr_goiter==0, na.rm = T),
+            "Thyroid Disease"=sum(thyroid_prob==2, na.rm = T),
+            "Thyroid Disease - EMR"=sum(emr_thyroid_problem==0, na.rm = T),
+            "Hypothyroidism"=sum(hypothyroid==2, na.rm = T),
+            "Hypothyroidism - EMR"= sum(emr_hypothyroidism==0, na.rm = T),
+            "Hyperthyroidism"=sum(hyperthyroid==2, na.rm = T),
+            "Hyperthyroidism - EMR"= sum(emr_hyperthyroidism==0, na.rm = T),
+            "Thyroid Cancer"=sum(thyroid_cancer==2, na.rm = T),
+            "Thyroid Cancer - EMR"=sum(emr_thyroid_cancer==0, na.rm = T),
+            "Diabetes Mellitus"=sum(Diabetes==3, na.rm = T),
+            "Diabetes Mellitus *or* Pre-DM"=sum(Diabetes==3, na.rm = T),
+            "Diabetes Mellitus - EMR"=sum(emr_dm_recode==0, na.rm = T),
+            "Gout"=sum(gout==2, na.rm = T),
+            "Congenital Heart Disease (CHD)"=sum(chd==2, na.rm = T),
+            "Weak Kidney"=sum(weak_kidney==2, na.rm = T),
+            "Hypertension"=sum(HTN==2, na.rm = T),
+            "Stroke"=sum(stroke==2, na.rm = T),
+            "Angina"=sum(angnia==2, na.rm = T),
+            "Congestive Heart Failure (CHF)"=sum(chf==2, na.rm = T),
+            "Heart Attack"=sum(heart_attack==2, na.rm = T),
+            "Cholesterol"=sum(Cholesterol==2, na.rm = T),
+            "PCOS"=sum(pos_recode==0, na.rm = T),
+            "PCOS - EMR"=sum(emr_pos==0, na.rm = T),
+            "Undescended Testes"=sum(undescended==2, na.rm = T),
+            "Emphysema"=sum(emphysema==2, na.rm = T),
+            "Autism Spectrum Disorder - EMR"=sum(emr_asd==0, na.rm = T),
+            "Overweight"=sum(Overweight==2, na.rm = T),
+            "Obesity - EMR"=sum(emr_obesity==0, na.rm = T),
+            "Dental Health"=sum((Dental_health==1|Dental_health==2|Dental_health==3), na.rm = T))
+
+Control_Count <- t(Control_Count)
+colnames(Control_Count) <- c("Controls")
+
+Case_Control <- cbind(Case_Count, Control_Count)
+Case_Control <- as.data.frame(Case_Control)
+
+Case_Control$Total <- Case_Control$Cases+Case_Control$Controls
+```
+
+Note from Frank on 9/3/2022: 
+
+For the metals analysis, the health outcomes  don’t look to me like outcomes likely to be related to metals exposure. It’s worthwhile to graph them to see if anything comes out, but I don’t think it will. 
+
+A couple of caveats: Research from laboratory animal studies show relationships between contaminant exposures and autism. I don’t think we have a big enough sample size to detect this, but it’s worth looking at.
+
+I think you should compare our PC scores to BMI. We measured BMI so that should be available for every participant. Many contaminants are obesogenic.
+
+Can we pull out the motor dysfunction health outcomes from our health survey and electronic medical records? I’m thinking of diseases such as Parkinson’s or anything else with a motor deficit. These can be caused by high exposure to metals.
+
+# Graphical Visualizations
+
+## Merging PCA with Survey and Health Data
+```{r merge}
+
+colnames(metals.noHg.robpca) <- c("ID", "Ln_Mn55", "Ln_Cu65", "Ln_Cd111", "Ln_Hg202", "Ln_Pb208", "Ln_U238", "Site", "PC1", "PC2", "PC3", "PC4", "PC5")
+
+Metals <- merge(Metals, metals.noHg.robpca, by=c("ID", "Site"))
+
+colnames(Metals) #will need to check to see if any of the col names need to change (e.g. instead of PC1 it is listed as PC1.x or PC1.y).
+```
+
+## BMI / Weight
+```{r bmi}
+summary(Metals$bmi)
+hist(Metals$bmi)
+
+summary(Metals$emr_bmi)
+hist(Metals$emr_bmi)
+
+ggplot(Metals, aes(x=bmi, y=PC1))+
+  geom_point()+
+  geom_smooth(method=lm, se=F)+
+  xlab("\nBMI")+
+  theme_bw()
+   
+ggplot(Metals, aes(x=bmi, y=PC2))+
+  geom_point()+
+  geom_smooth(method=lm, se=F)+
+  xlab("\nBMI")+
+  theme_bw()
+
+ggplot(Metals, aes(x=bmi, y=PC1, color=as.factor(Site)))+
+  geom_point()+
+  geom_smooth(method=lm, se=F)+
+  scale_color_discrete("Site", labels=c("1"="CSF", "2"="RCBH", "3"="YRMC"))+
+  xlab("\nBMI")+
+  theme_bw()
+
+ggplot(Metals, aes(x=bmi, y=PC2, color=as.factor(Site)))+
+  geom_point()+
+  geom_smooth(method=lm, se=F)+
+  scale_color_discrete("Site", labels=c("1"="CSF", "2"="RCBH", "3"="YRMC"))+
+  xlab("\nBMI")+
+  theme_bw()
+
+#BMI looks to be skewed (lognormally distributed)
+hist(log(Metals$bmi))
+hist(log(Metals$emr_bmi))
+
+ggplot(Metals, aes(x=log(bmi), y=PC1, color=as.factor(Gender)))+
+  geom_point()+
+  geom_smooth(method=lm, se=F)+
+  scale_color_discrete("Gender", labels=c("1"="Male", "2"="Female", "3"="Other"))+
+  xlab("\nBMI")+
+  theme_bw()
+
+ggplot(Metals, aes(x=log(bmi), y=PC2, color=as.factor(Gender)))+
+  geom_point()+
+  geom_smooth(method=lm, se=F)+
+  scale_color_discrete("Gender", labels=c("1"="Male", "2"="Female", "3"="Other"))+
+  xlab("\nBMI")+
+  theme_bw()
+
+ggplot(Metals, aes(x=log(bmi), y=PC1, color=as.factor(Farmer)))+
+  geom_point()+
+  geom_smooth(method=lm, se=F)+
+  scale_color_discrete("Gender", labels=c("1"="Farmworker", "2"="Non-Farmworker"))+
+  xlab("\nBMI")+
+  theme_bw()
+
+ggplot(Metals, aes(x=log(bmi), y=PC2, color=as.factor(Farmer)))+
+  geom_point()+
+  geom_smooth(method=lm, se=F)+
+  scale_color_discrete("Gender", labels=c("1"="Farmworker", "2"="Non-Farmworker"))+
+  xlab("\nBMI")+
+  theme_bw()
+
+#I think there is an issue with the "Farmer" column. See new addition to Data Clean tab.
+
+cor.test(Metals$PC1, Metals$bmi, method = "pearson") #is this the correct test to use?
+cor.test(Metals$PC2, Metals$bmi, method = "pearson")
+cor.test(Metals$PC1, log(Metals$bmi), method = "pearson") #is this the correct test to use?
+cor.test(Metals$PC2, log(Metals$bmi), method = "pearson")
+
+#Looking at binary variables for weight / obesity
+
+ggplot(subset(Metals, Overweight==1|Overweight==2), aes(x=as.factor(Overweight), y=PC1, fill=as.factor(Site)))+
+  geom_boxplot()+
+  scale_fill_discrete("Site", labels=c("1"="CSF", "2"="RCBH", "3"="YRMC"))+
+  scale_x_discrete(labels=c("1"="Yes", "2"="No"))+
+  xlab("\nOverweight")+
+  theme_bw()
+
+ggplot(subset(Metals, Overweight==1|Overweight==2), aes(x=as.factor(Overweight), y=PC2, fill=as.factor(Site)))+
+  geom_boxplot()+
+  scale_fill_discrete("Site", labels=c("1"="CSF", "2"="RCBH", "3"="YRMC"))+
+  scale_x_discrete(labels=c("1"="Yes", "2"="No"))+
+  xlab("\nOverweight")+
+  theme_bw()
+
+ggplot(subset(Metals, Overweight==1|Overweight==2), aes(x=as.factor(Overweight), y=PC1))+
+  geom_boxplot()+
+  scale_x_discrete(labels=c("1"="Yes", "2"="No"))+
+  xlab("\nOverweight")+
+  theme_bw()
+
+ggplot(subset(Metals, Overweight==1|Overweight==2), aes(x=as.factor(Overweight), y=PC2))+
+  geom_boxplot()+
+  scale_x_discrete(labels=c("1"="Yes", "2"="No"))+
+  xlab("\nOverweight")+
+  theme_bw()
+
+ggplot(subset(Metals, emr_obesity==1|emr_obesity==0), aes(x=as.factor(emr_obesity), y=PC1))+
+  geom_boxplot()+
+  scale_x_discrete(labels=c("1"="Yes", "0"="No"))+
+  xlab("\nObesity (EMR)")+
+  theme_bw()
+
+ggplot(subset(Metals, emr_obesity==1|emr_obesity==0), aes(x=as.factor(emr_obesity), y=PC2))+
+  geom_boxplot()+
+  scale_x_discrete(labels=c("1"="Yes", "0"="No"))+
+  xlab("\nObesity (EMR)")+
+  theme_bw()
+
+ggplot(subset(Metals, Overweight==1|Overweight==2), aes(x=as.factor(Overweight), y=PC1, fill=as.factor(Gender)))+
+  geom_boxplot()+
+  scale_fill_discrete("Sex", labels=c("1"="Male", "2"="Female"))+
+  scale_x_discrete(labels=c("1"="Yes", "2"="No"))+
+  xlab("\nOverweight")+
+  theme_bw()
+
+ggplot(subset(Metals, Overweight==1|Overweight==2), aes(x=as.factor(Overweight), y=PC2, fill=as.factor(Gender)))+
+  geom_boxplot()+
+  scale_fill_discrete("Sex", labels=c("1"="Male", "2"="Female"))+
+  scale_x_discrete(labels=c("1"="Yes", "2"="No"))+
+  xlab("\nOverweight")+
+  theme_bw()
+
+```
+
+## Arthritis
+```{r arthritis}
+ggplot(subset(Metals, arthritis==1|arthritis==2), aes(x=as.factor(arthritis), y=PC1, fill=as.factor(Site)))+
+  geom_boxplot()+
+  scale_fill_discrete("Site", labels=c("1"="CSF", "2"="RCBH", "3"="YRMC"))+
+  scale_x_discrete(labels=c("1"="Yes", "2"="No"))+
+  xlab("\nArthritis")+
+  theme_bw()
+
+ggplot(subset(Metals, arthritis==1|arthritis==2), aes(x=as.factor(arthritis), y=PC2, fill=as.factor(Site)))+
+  geom_boxplot()+
+  scale_fill_discrete("Site", labels=c("1"="CSF", "2"="RCBH", "3"="YRMC"))+
+  scale_x_discrete(labels=c("1"="Yes", "2"="No"))+
+  xlab("\nArthritis")+
+  theme_bw()
+```
+
+## Cancer
+```{r cancer}
+ggplot(subset(Metals, cancer==1|cancer==2), aes(x=as.factor(cancer), y=PC1, fill=as.factor(Site)))+
+  geom_boxplot()+
+  scale_fill_discrete("Site", labels=c("1"="CSF", "2"="RCBH", "3"="YRMC"))+
+  scale_x_discrete(labels=c("1"="Yes", "2"="No"))+
+  xlab("\nCancers")+
+  theme_bw()
+
+ggplot(subset(Metals, cancer==1|cancer==2), aes(x=as.factor(cancer), y=PC2, fill=as.factor(Site)))+
+  geom_boxplot()+
+  scale_fill_discrete("Site", labels=c("1"="CSF", "2"="RCBH", "3"="YRMC"))+
+  scale_x_discrete(labels=c("1"="Yes", "2"="No"))+
+  xlab("\nCancer")+
+  theme_bw()
+```
+
+## Diabetes Mellitus
+```{r dm}
+ggplot(subset(Metals, dm_recode==1|dm_recode==0), aes(x=as.factor(dm_recode), y=PC1, fill=as.factor(Site)))+
+  geom_boxplot()+
+  scale_fill_discrete("Site", labels=c("1"="CSF", "2"="RCBH", "3"="YRMC"))+
+  scale_x_discrete(labels=c("1"="Yes", "0"="No"))+
+  xlab("\nDiabetes Mellitus")+
+  theme_bw()
+
+ggplot(subset(Metals, dm_recode==1|dm_recode==0), aes(x=as.factor(dm_recode), y=PC2, fill=as.factor(Site)))+
+  geom_boxplot()+
+  scale_fill_discrete("Site", labels=c("1"="CSF", "2"="RCBH", "3"="YRMC"))+
+  scale_x_discrete(labels=c("1"="Yes", "0"="No"))+
+  xlab("\nDiabetes Mellitus")+
+  theme_bw()
+```
+
+## Cholesterol
+```{r cholesterol}
+ggplot(subset(Metals, Cholesterol==1|Cholesterol==2), aes(x=as.factor(Cholesterol), y=PC1, fill=as.factor(Site)))+
+  geom_boxplot()+
+  scale_fill_discrete("Site", labels=c("1"="CSF", "2"="RCBH", "3"="YRMC"))+
+  scale_x_discrete(labels=c("1"="Yes", "2"="No"))+
+  xlab("\nCholesterol")+
+  theme_bw()
+
+ggplot(subset(Metals, Cholesterol==1|Cholesterol==2), aes(x=as.factor(Cholesterol), y=PC2, fill=as.factor(Site)))+
+  geom_boxplot()+
+  scale_fill_discrete("Site", labels=c("1"="CSF", "2"="RCBH", "3"="YRMC"))+
+  scale_x_discrete(labels=c("1"="Yes", "2"="No"))+
+  xlab("\nCholesterol")+
+  theme_bw()
+```
+
+## Dental Health
+```{r dental}
+ggplot(subset(Metals, Dental_health==1|Dental_health==2|Dental_health==3|Dental_health==4|Dental_health==5), aes(x=as.factor(Dental_health), y=PC1))+
+  geom_boxplot()+
+  scale_x_discrete(labels=c("1"="Excellent", "2"="Very Good", "3"="Good", "4"="Fair", "5"="Poor"))+
+  xlab("\nDental Health")+
+  theme_bw()
+
+ggplot(subset(Metals, Dental_health==1|Dental_health==2|Dental_health==3|Dental_health==4|Dental_health==5), aes(x=as.factor(Dental_health), y=PC2))+
+  geom_boxplot()+
+  scale_x_discrete(labels=c("1"="Excellent", "2"="Very Good", "3"="Good", "4"="Fair", "5"="Poor"))+
+  xlab("\nDental Health")+
+  theme_bw()
+```

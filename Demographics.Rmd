@@ -1,0 +1,140 @@
+---
+title: "Demographics"
+author: "Jenna Honan"
+date: "8/30/2022"
+output: html_document
+---
+# An Analysis of Survey and Sample Participant Demographics in Yuma County, Arizona 
+This project will consider the associations between concentration levels of metals and 
+metalloids measured in hair samples of 330 Yuma County residents in 2018 and the prevalence of negative health outcomes, including endocrine disruption, reproductive disorders, obesity, and neurological disorders.
+
+Note: Before running this code, Data_Clean.Rmd and Yuma_Metals_Analysis.Rmb should be run to clean the dataset used in this analysis.
+
+## General Demographics Table
+```{r demographics}
+colnames(Metals)
+
+library(dplyr)
+library(lubridate)
+#Date range of responses
+Metals %>% 
+  # transform to date format with lubridate
+  mutate(Date = ymd(Date)) %>% 
+  # find min and max
+  summarise(min = min(Date, na.rm = T),
+            max = max(Date, na.rm = T))
+
+Metals %>%
+  filter(!is.na(ID)) %>%
+  summarize("n"=length(ID))
+
+Metals %>%
+  summarize("Male"=sum(Gender==1, na.rm = T),
+            "Female"=sum(Gender==2, na.rm = T),
+            "Refused Gender"=sum(Gender==3, na.rm = T),
+            "18-39"=sum(age>=18 & age<40, na.rm = T),
+            "40-59"=sum(age>=40 & age<60, na.rm = T),
+            "60+"=sum(age>=60, na.rm = T),
+            "Hispanic"=sum(Ethnicity==1, na.rm = T),
+            "Not Hispanic"=sum(Ethnicity==2, na.rm = T),
+            "Married"=sum(Marital_status==1, na.rm=T),
+            "Widowed"=sum(Marital_status==2, na.rm=T),
+            "Divorced"=sum(Marital_status==3, na.rm=T),
+            "Separated"=sum(Marital_status==4, na.rm=T),
+            "Never married"=sum(Marital_status==5, na.rm=T),
+            "No school"=sum(Education==1,  na.rm = T),
+            "Elementary school"=sum(Education==2,  na.rm = T),
+            "Middle school"=sum(Education==3,  na.rm = T),
+            "High school"=sum(Education==4,  na.rm = T),
+            "College"=sum(Education==5,  na.rm = T),
+            "Advanced degree"=sum(Education==6,  na.rm = T),
+            "Other"=sum(Education==7,  na.rm = T))
+
+Metals %>%
+  group_by(Site) %>%
+  summarize("n"=length(Site),
+            "Male"=sum(Gender==1, na.rm = T),
+            "Female"=sum(Gender==2, na.rm = T),
+            "Refused Gender"=sum(Gender==3, na.rm = T),
+            "18-39"=sum(age>=18 & age<40, na.rm = T),
+            "40-59"=sum(age>=40 & age<60, na.rm = T),
+            "60+"=sum(age>=60, na.rm = T),
+            "Hispanic"=sum(Ethnicity==1, na.rm = T),
+            "Not Hispanic"=sum(Ethnicity==2, na.rm = T),
+            "Married"=sum(Marital_status==1, na.rm=T),
+            "Widowed"=sum(Marital_status==2, na.rm=T),
+            "Divorced"=sum(Marital_status==3, na.rm=T),
+            "Separated"=sum(Marital_status==4, na.rm=T),
+            "Never married"=sum(Marital_status==5, na.rm=T),
+            "No school"=sum(Education==1,  na.rm = T),
+            "Elementary school"=sum(Education==2,  na.rm = T),
+            "Middle school"=sum(Education==3,  na.rm = T),
+            "High school"=sum(Education==4,  na.rm = T),
+            "College"=sum(Education==5,  na.rm = T),
+            "Advanced degree"=sum(Education==6,  na.rm = T),
+            "Other"=sum(Education==7,  na.rm = T))
+
+#Below will give a % of folks who rated their general health as fair (4) or poor (5)
+(Metals %>% 
+  filter(General_health==4 | General_health==5) %>% 
+  summarise(Count = n()))/sum(!is.na(Metals$General_health))
+
+#Below will give a % of folks who are listed as having a "thyroid problem"
+(Metals %>% 
+  filter(thyroid_prob_D==1) %>% 
+  summarise(Count = n()))/sum(!is.na(Metals$thyroid_prob_D))
+
+(Metals %>% 
+  filter(emr_thyroid_problem==1) %>% 
+  summarise(Count = n()))/sum(!is.na(Metals$emr_thyroid_problem))
+```
+
+## Age
+```{r age}
+Metals$age <- as.numeric(Metals$age)
+library(dplyr)
+knitr::kable(Metals %>%
+               summarise(mean=round(mean(age, na.rm=T), digits=1),
+                         median=round(median(age, na.rm=T), digits=1),
+                         min=round(min(age, na.rm=T), digits=1),
+                         max=round(max(age, na.rm=T), digits=1),
+                         NAs=sum(is.na(age))))
+```
+
+## Height, Weight, and BMI
+```{r bmi}
+knitr::kable(summary(round(Metals[c("emr_height_inches", "emr_weight", "emr_bmi", "height_total", "Weight", "bmi")]), digits=1), col.names = c("EMR Height (inches)", "EMR Weight (lbs)", "EMR BMI", "Measured Height (inches)", "Measured Weight (lbs)", "Measured BMI"))
+```
+
+### Determining if Differences Exist in EMR versus Measured Data
+```{r diff_bmi}
+Metals[grepl('emr', colnames(Metals))]
+
+t.test(Metals$emr_bmi, Metals$bmi)
+t.test(Metals$emr_bmi, Metals$bmi, paired = T)
+#Some data is missing from the EMRs for BMI. The BMIs between the the EMR and measurements are different in general, but also there are differences between the paired data.
+```
+
+# Statistical Differences Among Sites
+```{r stat_difference}
+summary(aov(Gender~as.factor(Site), data=Metals))
+
+summary(aov(age~as.factor(Site), data=Metals))
+
+summary(aov(Ethnicity~as.factor(Site), data=Metals))
+
+summary(aov(Marital_status~as.factor(Site), data=Metals))
+
+summary(aov(Education~as.factor(Site), data=Metals))
+
+
+pairwise.t.test(Metals$Gender, as.factor(Metals$Site), adj="bonf")
+
+pairwise.t.test(Metals$age, as.factor(Metals$Site), adj="bonf")
+
+pairwise.t.test(Metals$Ethnicity, as.factor(Metals$Site), adj="bonf")
+
+pairwise.t.test(Metals$Marital_status, as.factor(Metals$Site), adj="bonf")
+
+pairwise.t.test(Metals$Education, as.factor(Metals$Site), adj="bonf")
+```

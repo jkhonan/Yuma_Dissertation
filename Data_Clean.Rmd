@@ -1,0 +1,132 @@
+---
+title: "Data Cleaning"
+author: "Jenna Honan"
+date: "9/1/2022"
+output: html_document
+---
+
+#Data Cleaning
+
+Note: This is the first code to be run for this analysis.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+## Importing Data
+library(readxl)
+Metals <- read_excel("~/Desktop/Research/Yuma/Yuma - R Project/Yuma Metals Project_EMR_Editted 23Aug2021 mental health & ID removed.xlsx", sheet = "Sqrt 2")
+
+#Reformating Date Data
+Metals$Date <- as.Date(as.numeric(Metals$Date), origin = "1899-12-30")
+Metals$DOB <- as.Date(as.numeric(Metals$DOB), origin = "1899-12-30")
+
+#Notes: Difference Between Metals and Metalloids
+  #Metals have unique metallic properties such as shiny appearance, high density, higher melting points and electric conductivity. 
+  #However, metalloids possess both metal properties and non-metal properties. 
+  #Metals are located in the left side of the periodic table while metalloids are in the middle of metals and non-metals.
+```
+
+## Data Cleaning
+```{r dataclean}
+library(dplyr)
+#Using 'Perchlorate codebook.pdf' as data dictionary
+
+### Additional Notes from Mark Remiker, August 2022 ###
+#Num_in_household 
+#-	No data entry error here - that’s the response!  
+#Num_children
+#-	Same!  That’s the actual response.  
+#Armed_forces
+#-	1 = Yes, 2 = No, 3 = Don’t know, 4 = Refuse
+#-	61 = Yes, 62 = No, 63 = Don’t know, 64 = Refuse
+unique(Metals$Armed_forces)
+Metals$Armed_forces[Metals$Armed_forces==62] <- 2
+unique(Metals$Armed_forces)
+#Employment
+#-	1 = Working for pay, 2= Self-employed, 3= Looking for work, 4= Temporarily laid off, 5 = Retired, 6= A homemaker, 7= Student, 8= Permanently disabled, 9= Maternity/sick leave, 10= Other, 11= Don’t know, 12 = Refused
+#Health_care
+#-	21= Yes, 22= No, 24= I don’t know, 23= Refuse
+unique(Metals$Health_care)
+Metals$Health_care[Metals$Health_care==21] <- 1
+Metals$Health_care[Metals$Health_care==22] <- 2
+unique(Metals$Health_care)
+#Health_consult
+#-	21= Yes, 22= No, 24= I don’t know, 23= Refuse
+unique(Metals$Health_consult)
+Metals$Health_consult[Metals$Health_consult==31] <- 1
+Metals$Health_consult[Metals$Health_consult==32] <- 2
+Metals$Health_consult[Metals$Health_consult==33] <- 3
+Metals$Health_consult[Metals$Health_consult==34] <- 4
+Metals$Health_consult[Metals$Health_consult==35] <- 5
+unique(Metals$Health_consult)
+#Health_consult_place
+#-	Blank and “.”  - Missing data
+#Health options/Medical conditions
+#-	1= Yes, 2= No, 3= Don’t know, 4= Refused 
+#HTN, HTN_hx_meds, Cholesterol, Cholesterol_meds
+#-	5= Yes, 6= No, 7= Don’t know 
+unique(Metals$HTN)
+Metals$HTN[Metals$HTN==5] <- 1
+Metals$HTN[Metals$HTN==6] <- 2
+Metals$HTN[Metals$HTN==7] <- 3
+unique(Metals$HTN)
+unique(Metals$HTN_hx_meds)
+Metals$HTN_hx_meds[Metals$HTN_hx_meds==5] <- 1
+Metals$HTN_hx_meds[Metals$HTN_hx_meds==6] <- 2
+unique(Metals$HTN_hx_meds)
+unique(Metals$Cholesterol)
+Metals$Cholesterol[Metals$Cholesterol==5] <- 1
+Metals$Cholesterol[Metals$Cholesterol==6] <- 2
+Metals$Cholesterol[Metals$Cholesterol==7] <- 3
+unique(Metals$Cholesterol)
+#Diabetes
+#-	31= Yes, 32= No, 33= Prediabetes 35= Don't know
+unique(Metals$Diabetes)
+Metals$Diabetes[Metals$Diabetes==31] <- 1
+Metals$Diabetes[Metals$Diabetes==32] <- 3
+Metals$Diabetes[Metals$Diabetes==33] <- 2
+Metals$Diabetes[Metals$Diabetes==35] <- 4
+unique(Metals$Diabetes)
+#Dm_age
+#-	“.” = missing data, no response.
+#Endo: does the participant have endocrinology data
+#-	.00 = No, 1.00 = yes 
+unique(Metals$endo)
+#These are correct here.
+#EMR
+#-	0= No, 1= Yes
+
+#Generally "." is missing data
+Metals2 <- Metals %>% 
+  select(-c(Date, DOB))
+
+Metals2[Metals2=="."] <- NA
+
+Metals3 <- Metals %>% 
+  select(c(Date, DOB))
+
+Metals <- cbind(Metals2, Metals3)
+
+remove(Metals2)
+remove(Metals3)
+#Participant C1045 was 9/4/2018
+
+Metals$Date[Metals$Date=="2013-01-04"] <- "2018-09-04"
+```
+
+## Wondering About Recodes
+```{r recoded}
+Metals[grepl('recode', colnames(Metals))]
+
+#It looks like Jonathan Credo (who did the recodes) maybe tried to create dummy variables from the categorical variables?
+#Unfortunately they are not adding up very well (and lots of NAs).
+
+#There are also thyroid variables with the suffix _D that look like they are dummy variables.
+Metals[grepl('_D', colnames(Metals))]
+#These ones include "don't know" and "prefer not to answer" in the "No" category.
+```
+
+```{r farmworker}
+#Question from survey: In the last 12 months, Have you worked as a farmer, rancher, or agricultural worker?
+sum(Metals$Farmer==1,na.rm = T)
+
+```

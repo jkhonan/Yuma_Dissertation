@@ -1,0 +1,197 @@
+---
+title: "Yuma_Metals_Analysis"
+author: "Jenna Honan"
+date: "6/29/2022"
+output: html_document
+---
+# An Analysis of Metals in Yuma County, Arizona and their Effects on Health Outcomes
+This project will consider the associations between concentration levels of metals and 
+metalloids measured in hair samples of 330 Yuma County residents in 2018 and the prevalence of negative health outcomes, including endocrine disruption, reproductive disorders, obesity, and neurological disorders.
+
+Note: Before running this code, Data_Clean.Rmd should be run to clean the dataset used in this analysis.
+
+## Data Descriptions
+```{r desc}
+library(DataExplorer)
+#create_report(Metals) (Remove the # when you actually want to run - takes too much processing power otherwise.)
+```
+
+
+## Data Visualization - Exploratory
+### Metal Concentrations
+```{r metals}
+#The initial columns are for Mn55, Cu65, Cd111, Hg202, Pb208, and U238.
+#There are additional columns with metal concentrations for arsenic and iron (As_75 and Fe_57) that come later after the hormone level columns.
+#The differences in naming format make me think these were analyzed either at different times or on different machines or with different techniques, perhaps? 
+#Going to make things uniform for posterity.
+colnames(Metals)[colnames(Metals) == "As_75"] <- "As75"
+colnames(Metals)[colnames(Metals) == "Fe_57"] <- "Fe57"
+```
+
+### Melting Metals Together :)
+```{r melting_data}
+library(reshape2)
+data.melt <- melt(Metals,id.vars=c('ID','Date'), measure.vars=c('Mn55','Cu65','Cd111', 'Hg202', 'Pb208', 'U238'))
+library(ggplot2)
+ggplot(data.melt) +
+  geom_boxplot(aes(y=log(value), fill=variable))+
+  theme(axis.ticks.x = element_blank(),
+        axis.text.x = element_blank(),
+        panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"))+
+  ylab("Ln Concentration (ug/g)")+
+  labs(fill='Metals')
+```
+
+### Concentrations by Date
+```{r envt_samples_by_collectiondate}
+#There is a single data point for the year 2013, with the rest being April-November 2018.
+#This is likely either a mistake in input or some other error, but I will not include this point in subsequent analysis.
+#The concentration values for this single row are blank anyway.
+ggplot(data.melt, aes(y=log(value), x=Date, color=variable))+
+  geom_point()+
+  geom_smooth(se=F)+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.text.x=element_text(angle=60, hjust=1),
+        axis.line = element_line(color="#000000"))+
+  scale_x_date(date_breaks = "1 month", date_labels =  "%b")+
+  ylab("Ln Concentration (Units)")+
+  xlab("Date of Sample Collection, 2018")+
+  labs(color='Metals')
+
+#Relevant paper: https://www.sciencedirect.com/science/article/pii/S1878535212000263 
+```
+
+### Tables and Observations for Each Metal
+```{r observations_envt_samples}
+
+library(dplyr)
+
+data.melt %>% 
+  group_by(variable) %>% 
+  summarize(number_NAs=sum(is.na(value)))
+
+#Seeing if there are negative concentrations
+data.melt %>% 
+  group_by(variable) %>% 
+  summarize(n_negative=sum(value<0, na.rm = T))
+#There are twelve negative concentration levels of arsenic. This will mess with taking the lognormal to transform.
+#Need to look up what to do when concentrations in a dataset are negative. Do you ignore? Do you replace with DL/sqrt(2)? Do you leave them as is and it's just tough luck?
+#For now I will simply ignore!
+
+#Making a table re: metal concentration values
+library(EnvStats)
+data.melt$value <- as.numeric(data.melt$value)
+knitr::kable(data.melt %>%
+               filter(value>=0) %>% #This is ignoring negative concentrations in dataset, of which As75 has twelve.
+               group_by(variable) %>% 
+               summarize(n=sum(!is.na(value)),
+                         geomean=round(geoMean(value, na.rm = T), digits = 2),
+                         geosd=round(geoSD(value, na.rm = T), digits = 2)))
+
+#create_report(data.melt) (Only run if you need to.)
+```
+
+### Distribution of Metals Data
+```{r metal_distributions}
+
+hist(Metals$Mn55)
+
+hist(Metals$Cu65)
+
+hist(Metals$Cd111)
+
+hist(Metals$Hg202)
+
+hist(Metals$Pb208)
+
+hist(Metals$U238)
+
+hist(Metals$As75)
+#If negative values are excluded, lognormal is appropriate.
+
+hist(Metals$Fe57)
+
+library(tidyr)
+
+Metals %>% 
+  select(Mn55, Cu65, Cd111, Hg202, Pb208, U238, Site, ID) %>% 
+  pivot_longer(-c(ID, Site), names_to="Metal", values_to="Concentration") %>%
+  ggplot(aes(x=Concentration)) + 
+  geom_density() +
+  scale_x_log10() + 
+  facet_wrap(~ Metal) +
+  ggtitle("Distributions of Metals Concentrations")+
+  ylab("Density")+
+  xlab("Log-Transformed Concentration")+
+  theme(text = element_text(size = 20))
+
+
+# New facet label names for supp variable
+site.labs <- c("1" = "CSF", "2" = "RCBH", "3" = "YRMC")
+
+Metals %>% 
+  select(Mn55, Cu65, Cd111, Hg202, Pb208, U238, Site, ID) %>% 
+  pivot_longer(-c(ID, Site), names_to="Metal", values_to="Concentration") %>%
+  ggplot(aes(y=log(Concentration), fill=Metal)) + 
+  geom_boxplot() +
+  facet_wrap(~ Site, labeller = labeller(Site = site.labs)) +
+  ggtitle("Metals Concentrations by Site")+
+  ylab("Log Concentrations")+
+  xlab("")+
+  theme(text = element_text(size = 15),
+        panel.spacing = unit(0.75, "cm"))
+```
+
+### Hormone Levels
+```{r hormones, warning=F}
+#Looking at total levels first before free 
+library(gridExtra)
+TSH <- ggplot(Metals) +geom_boxplot(aes(y=TSH)) +theme(axis.ticks.x = element_blank(),axis.text.x = element_blank()) +theme_classic() +ylab("TSH (units)")
+T3 <- ggplot(Metals) +geom_boxplot(aes(y=TotalT3)) +theme(axis.ticks.x = element_blank(),axis.text.x = element_blank()) +theme_classic() +ylab("Total T3 (units)")
+T4 <- ggplot(Metals) +geom_boxplot(aes(y=TotalT4)) +theme(axis.ticks.x = element_blank(),axis.text.x = element_blank()) +theme_classic() +ylab("Total T4 (units)")
+Cortisol <- ggplot(Metals) +geom_boxplot(aes(y=Cortisol)) +theme(axis.ticks.x = element_blank(),axis.text.x = element_blank()) +theme_classic() +ylab("Cortisol (units)")
+
+grid.arrange(TSH, Cortisol, T3, T4)
+
+#Looking at distributions
+hist(Metals$TSH)
+hist(Metals$TotalT3)
+hist(Metals$TotalT4)
+hist(Metals$Cortisol)
+
+#Levels by date
+data.melt2 <- melt(Metals,id.vars=c('ID','Date'), measure.vars=c('TSH','TotalT3','TotalT4', 'Cortisol'))
+
+ggplot(data.melt2, aes(y=value, x=Date, color=variable))+
+  geom_point()+
+  geom_smooth(se=F)+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.text.x=element_text(angle=60, hjust=1),
+        axis.line = element_line(color="#000000"))+
+  scale_x_date(date_breaks = "1 month", date_labels =  "%b")+
+  ylab("Hormone Levels (Units)")+
+  xlab("Date of Sample Collection")+
+  labs(color='Hormones')
+
+#create_report(data.melt2) Only do when necessary
+```
+
+### Plotting Hormone Levels Against Metal Concentrations
+```{r metals_hormones}
+#This may be irrelevant if we use a PCA, but doing it anyway just to see...
+#I can always do this again but with the simplified results of the PCA
+
+#Cortisol
+Mn_Cortisol <- ggplot(Metals, aes(x=log(Mn55), y=Cortisol))+geom_point()
+Cu_Cortisol <- ggplot(Metals, aes(x=log(Cu65), y=Cortisol))+geom_point()
+Cd_Cortisol <- ggplot(Metals, aes(x=log(Cd111), y=Cortisol))+geom_point()
+Hg_Cortisol <- ggplot(Metals, aes(x=log(Hg202), y=Cortisol))+geom_point()
+Pb_Cortisol <- ggplot(Metals, aes(x=log(Pb208), y=Cortisol))+geom_point()
+U_Cortisol <- ggplot(Metals, aes(x=log(U238), y=Cortisol))+geom_point()
+As_Cortisol <- ggplot(Metals, aes(x=log(As75), y=Cortisol))+geom_point()
+Fe_Cortisol <- ggplot(Metals, aes(x=log(Fe57), y=Cortisol))+geom_point()
+
+grid.arrange(Mn_Cortisol, Cu_Cortisol, Cd_Cortisol, Hg_Cortisol, Pb_Cortisol, U_Cortisol, As_Cortisol, Fe_Cortisol)
+```
+

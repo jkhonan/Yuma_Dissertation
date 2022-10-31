@@ -1,0 +1,184 @@
+---
+title: "Correlation of Perchlorate and Creatinine in Urine Samples"
+author: "Jenna Honan"
+date: "9/5/2022"
+output: html_document
+---
+
+```{r setup}
+library(readxl)
+Creatinine <- read_excel("~/Desktop/Research/Yuma/Yuma - R Project/2021-0072_Urinary Creatinine Results.xlsx", skip=6)
+Perchlorate <- read_excel("~/Desktop/Research/Yuma/Yuma - R Project/2021-0072_Urinary Perchlorate Report.xlsx", skip=7)
+
+#Light cleaning
+Creatinine$`Sample ID` <- gsub("YRMC-", "Y1", Creatinine$`Sample ID`)
+Perchlorate$`Sample ID` <- gsub("YRMC-", "Y1", Perchlorate$`Sample ID`)
+```
+
+## Merging Datasets for Analysis
+```{r merge}
+Urine_Perch_Creat <- merge(Creatinine, Perchlorate, by=c("Sample ID"), all = T)
+Urine_Perch_Creat <- as.data.frame(Urine_Perch_Creat)
+Urine_Perch_Creat <- Urine_Perch_Creat[, c("Sample ID", "Result.x", "LOD.x", "Result.y", "LOD.y")]
+unique(Creatinine$Units)
+unique(Perchlorate$Units)
+colnames(Urine_Perch_Creat) <- c("Sample_ID", "Result_C_mg_dL", "LOD_C", "Result_P_ng_mL", "LOD_P")
+
+Urine_Perch_Creat$Result_C[Urine_Perch_Creat$Result_C=="NR"] <- NA
+
+#Of the 297 observations, 2 have missing values for both creatinine and perchlorate, and 1 has missing value for creatinine but measured values for perchlorate, such that 294 obersvations are paired with measured values.
+
+library(dplyr)
+library(knitr)
+kable(Urine_Perch_Creat %>% 
+  filter(!is.na(Result_C_mg_dL)) %>% 
+  summarise("n Creatinine < LOD"=sum(Result_C_mg_dL<LOD_C, na.rm = T),
+            "n Perchlorate < LOD"=sum(Result_P_ng_mL<LOD_P, na.rm = T)))
+#Rows with missing data for either creatinine or perchorate have been removed from the dataset (DF=99%). No replacement needed - all detected values above LOD.
+```
+
+## Checking Distributions
+```{r distributions}
+hist(as.numeric(Urine_Perch_Creat$Result_C_mg_dL), xlab = "Creatinine (mg/dL)", main = "Distribution of Creatinine Levels")
+hist(as.numeric(Urine_Perch_Creat$Result_P_ng_mL), xlab = "Perchlorate (ng/mL)", main = "Distribution of Perchlorate Levels")
+
+hist(log(as.numeric(Urine_Perch_Creat$Result_C_mg_dL)), xlab = "ln Creatinine (mg/dL)", main = "Distribution of Creatinine Levels After Log Transformation")
+hist(log(as.numeric(Urine_Perch_Creat$Result_P_ng_mL)), xlab = "ln Perchlorate (ng/mL)", main = "Distribution of Perchlorate Levels After Log Transformation")
+```
+
+## Analyzing Correlation of Creatinine and Perchlorate
+```{r correlation}
+library(ggplot2)
+Urine_Perch_Creat$Site <- substr(as.character(Urine_Perch_Creat$Sample_ID),7,7)
+
+ggplot(Urine_Perch_Creat, aes(x=as.numeric(Result_C_mg_dL), y=as.numeric(Result_P_ng_mL)))+
+  geom_point()+
+  geom_smooth(method=lm, se=F)+
+  xlab("Creatinine (mg/dL)")+
+  ylab("Perchlorate (ng/mL)")+
+  ggtitle("Correlation of Perchlorate and Creatinine")
+
+ggplot(Urine_Perch_Creat, aes(x=log(as.numeric(Result_C_mg_dL)), y=log(as.numeric(Result_P_ng_mL))))+
+  geom_point(aes(color=Site))+
+  scale_color_discrete("Site", labels=c("C"="CSF", "R"="RCBH", "Y"="YRMC"))+
+  geom_smooth(method=lm, se=F)+
+  xlab("ln Creatinine (mg/dL)")+
+  ylab("ln Perchlorate (ng/mL)")+
+  ggtitle("Correlation of Perchlorate and Creatinine")+
+  theme(text = element_text(size = 20))
+
+cor.test(log(as.numeric(Urine_Perch_Creat$Result_C_mg_dL)), log(as.numeric(Urine_Perch_Creat$Result_P_ng_mL)))
+```
+
+### Checking for Grouping by Site
+```{r corr_site}
+
+ggplot(Urine_Perch_Creat, aes(x=log(as.numeric(Result_C_mg_dL)), y=log(as.numeric(Result_P_ng_mL)), color=as.factor(Site)))+
+  geom_point()+
+  geom_smooth(method=lm, se=F)+
+  scale_color_discrete("Site", labels=c("C"="CSF", "R"="RCBH", "Y"="YRMC"))+
+  xlab("ln Creatinine (mg/dL)")+
+  ylab("ln Perchlorate (ng/mL)")+
+  ggtitle("Correlation of Perchlorate and Creatinine After Log Transformations by Location")
+
+kable(Urine_Perch_Creat %>% 
+        summarise("CSF"=sum(Site=="C"),
+                  "RCBH"=sum(Site=="R"),
+                  "YRMC"=sum(Site=="Y"),
+                  "NA"=sum(is.na(Site))))
+```
+
+### Checking for Grouping by Sex
+```{r corr_sex}
+library(dplyr)
+
+ID_Gender <- Metals[, c("ID", "Gender")]
+Urine_Perch_Creat$ID <- substr(as.character(Urine_Perch_Creat$Sample_ID),7,11)
+
+df1 <- merge(ID_Gender, Urine_Perch_Creat, by="ID")
+df1 <- as.data.frame(df1)
+
+ggplot(subset(df1, !is.na(df1$Gender)), aes(x=log(as.numeric(Result_C_mg_dL)), y=log(as.numeric(Result_P_ng_mL)), color=as.factor(Gender)))+
+  geom_point()+
+  geom_smooth(method=lm, se=F)+
+  scale_color_discrete("Gender", labels=c("1"="Male", "2"="Female"))+
+  xlab("ln Creatinine (mg/dL)")+
+  ylab("ln Perchlorate (ng/mL)")+
+  ggtitle("Correlation of Perchlorate and Creatinine After Log Transformations by Sex")  
+
+kable(df1 %>% 
+        summarise("Males"=sum(Gender==1, na.rm=T),
+                  "Females"=sum(Gender==2, na.rm=T),
+                  "NA"=sum(is.na(Gender))))
+```
+
+### Correlating BMI and Creatinine Levels
+```{r corr_bmi}
+library(dplyr)
+
+ID_BMI <- Metals[, c("ID", "bmi")]
+
+df2 <- merge(ID_BMI, Urine_Perch_Creat, by="ID")
+df2 <- as.data.frame(df2)
+
+ggplot(df2, aes(x=as.numeric(bmi), y=log(as.numeric(Result_C_mg_dL))))+
+  geom_point()+
+  geom_smooth(method=lm, se=F)+
+  xlab("BMI")+
+  ylab("ln Creatinine (mg/dL)")+
+  ggtitle("Correlation of BMI and Creatinine After Log Transformation")  
+ #Likely more dependent on lean BMI
+```
+
+### Comparing our population's perchlorate levels to national averages
+```{r ave_perch_population}
+Urine_Perch_Creat$Result_P_ng_mL <- as.numeric(Urine_Perch_Creat$Result_P_ng_mL)
+
+max(Urine_Perch_Creat$Result_P_ng_mL, na.rm = T)
+mean(Urine_Perch_Creat$Result_P_ng_mL, na.rm = T)
+
+
+
+library(haven)
+NHANES_Perch <- read_xpt("~/Desktop/Research/Yuma/Yuma - R Project/PERNT_J.XPT")
+
+mean(NHANES_Perch$URXUP8, na.rm = T)
+exp(mean(log(NHANES_Perch$URXUP8), na.rm = T)) #To compare to the summary table.
+
+#tiff("Perchlorate_Graph.tiff", units="in", width=8, height=5, res=300) Only to save
+ggplot(Urine_Perch_Creat)+
+  geom_point(aes(x=Sample_ID, y=Result_P_ng_mL, shape=Site, color=Site), size=2)+
+  scale_shape_discrete(labels=c("C"="CSF", "R"="RCBH", "Y"="YRMC"))+
+  scale_color_discrete(labels=c("C"="CSF", "R"="RCBH", "Y"="YRMC"))+
+  geom_hline(yintercept=c(3.848915, 3.095675), color=c("red", "firebrick"), linetype=c("solid", "dashed"))+ 
+  xlab("")+
+  ylab("Urinary Perchlorate (ng/mL)")+
+  labs(color="Site", shape="Site", labels=c("C"="CSF", "R"="RCBH", "Y"="YRMC"))+
+  theme(axis.ticks = element_blank(),
+        axis.text.x = element_blank(),
+        panel.background = element_rect(fill = '#ffffff', color = 'black'),
+        text = element_text(size=15))
+#dev.off() Only to save
+```
+
+### Perchlorate against Measured BMI
+```{r perch_bmi_measured}
+Urine_Perch_Creat$ID <- substr(as.character(Urine_Perch_Creat$Sample_ID),7,11)
+
+Perchlorate <- merge(Urine_Perch_Creat, Metals, by="ID", all=T)
+
+ggplot(Perchlorate, aes(x=Result_P_ng_mL, y=log(bmi)))+
+  geom_point()+
+  geom_smooth(method=lm, se=F)+
+  theme(legend.position = "none",
+        panel.background = element_rect(fill="#ffffff"),
+        axis.text.x=element_text(angle=60, hjust=1),
+        axis.line = element_line(color="#000000"))+
+  xlab("Perchlorate (units)")+
+  ylab("Logtransformed BMI -Measured (kg/m2)")
+
+library(car)
+perch_bmi_creat <- lm(bmi~Result_P_ng_mL+Result_C_mg_dL, Perchlorate)
+
+avPlots(perch_bmi_creat)
+```

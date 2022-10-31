@@ -1,0 +1,1092 @@
+\PassOptionsToPackage{unicode=true}{hyperref} % options for packages loaded elsewhere
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[]{article}
+\usepackage{lmodern}
+\usepackage{amssymb,amsmath}
+\usepackage{ifxetex,ifluatex}
+\usepackage{fixltx2e} % provides \textsubscript
+\ifnum 0\ifxetex 1\fi\ifluatex 1\fi=0 % if pdftex
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provides euro and other symbols
+\else % if luatex or xelatex
+  \usepackage{unicode-math}
+  \defaultfontfeatures{Ligatures=TeX,Scale=MatchLowercase}
+\fi
+% use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+% use microtype if available
+\IfFileExists{microtype.sty}{%
+\usepackage[]{microtype}
+\UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\IfFileExists{parskip.sty}{%
+\usepackage{parskip}
+}{% else
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt plus 2pt minus 1pt}
+}
+\usepackage{hyperref}
+\hypersetup{
+            pdftitle={Yuma Metals Empirical Distributions and Dimension Reduction - v3},
+            pdfauthor={Dean Billheimer},
+            pdfborder={0 0 0},
+            breaklinks=true}
+\urlstyle{same}  % don't use monospace font for urls
+\usepackage[margin=1in]{geometry}
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\usepackage{framed}
+\definecolor{shadecolor}{RGB}{248,248,248}
+\newenvironment{Shaded}{\begin{snugshade}}{\end{snugshade}}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{0.94,0.16,0.16}{#1}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.77,0.63,0.00}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\BuiltInTok}[1]{#1}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{0.64,0.00,0.00}{\textbf{#1}}}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\ImportTok}[1]{#1}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.81,0.36,0.00}{\textbf{#1}}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{#1}}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\usepackage{graphicx,grffile}
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
+\makeatother
+% Scale images if necessary, so that they will not overflow the page
+% margins by default, and it is still possible to overwrite the defaults
+% using explicit options in \includegraphics[width, height, ...]{}
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+\setlength{\emergencystretch}{3em}  % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{0}
+% Redefines (sub)paragraphs to behave more like sections
+\ifx\paragraph\undefined\else
+\let\oldparagraph\paragraph
+\renewcommand{\paragraph}[1]{\oldparagraph{#1}\mbox{}}
+\fi
+\ifx\subparagraph\undefined\else
+\let\oldsubparagraph\subparagraph
+\renewcommand{\subparagraph}[1]{\oldsubparagraph{#1}\mbox{}}
+\fi
+
+% set default figure placement to htbp
+\makeatletter
+\def\fps@figure{htbp}
+\makeatother
+
+
+\title{Yuma Metals Empirical Distributions and Dimension Reduction - v3}
+\author{Dean Billheimer}
+\date{2021-08-28}
+
+\begin{document}
+\maketitle
+
+\hypertarget{overview}{%
+\section{Overview}\label{overview}}
+
+Explore the distributional properties of (hair?) metals concentrations
+from Yuma, AZ. Also, use Rmd file to illustrate use of R and markdown
+for computationally reproducible research.
+
+\hypertarget{changes-since-2021-08-21}{%
+\subsubsection{Changes since
+2021-08-21}\label{changes-since-2021-08-21}}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  Values missing all metals are true missing -- insuffucent sample.
+\item
+  Values with missing Hg are also true missing (about 89 of these)
+\end{enumerate}
+
+\begin{itemize}
+\tightlist
+\item
+  fit PCA excluding missing Hg
+\item
+  2nd fit using imputed Hg from other metals data.
+\end{itemize}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{2}
+\tightlist
+\item
+  drop sample R1108 - missing Cu value - not identified in spectrum.
+  This was included in a batch of samples that failed QA/QC check
+\end{enumerate}
+
+\hypertarget{major-changes-since-2020-07-03-version}{%
+\subsubsection{Major changes since 2020-07-03
+version}\label{major-changes-since-2020-07-03-version}}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  Updated data from Jonathan Credo - using 2021-08-23 version - sheet 3
+\item
+  Many of the NAs are true missing -
+\item
+  Jonathan re-coded BDL values to DL/sqrt(2)
+\item
+  Re-run the analysis.
+\item
+  Produce a new data set with robust PCA components for Jonathan's use.
+\end{enumerate}
+
+\hypertarget{major-changes-since-2020-06-23-version}{%
+\subsubsection{Major changes since 2020-06-23
+version}\label{major-changes-since-2020-06-23-version}}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  Omit observations where most metals are unmeasured
+\item
+  Omit Pb206 and 207
+\item
+  What to do about Hg NAs?
+\end{enumerate}
+
+\hypertarget{takeaway}{%
+\subsubsection{Takeaway}\label{takeaway}}
+
+Standard and robust PCA yield generally similar results. There are
+enough differences, however, that the robust method would be my first
+choice for data summarization.
+
+\hypertarget{r-stuff}{%
+\section{R Stuff}\label{r-stuff}}
+
+\hypertarget{set-up-environment-and-read-data}{%
+\subsection{Set-up Environment and Read
+Data}\label{set-up-environment-and-read-data}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{library}\NormalTok{(readxl)}
+\KeywordTok{library}\NormalTok{(tidyverse)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## -- Attaching packages --------------------------------------- tidyverse 1.3.2 --
+## v ggplot2 3.3.6     v purrr   0.3.4
+## v tibble  3.1.8     v dplyr   1.0.9
+## v tidyr   1.2.0     v stringr 1.4.1
+## v readr   2.1.2     v forcats 0.5.2
+## -- Conflicts ------------------------------------------ tidyverse_conflicts() --
+## x dplyr::filter() masks stats::filter()
+## x dplyr::lag()    masks stats::lag()
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{library}\NormalTok{(ggplot2)}
+
+\CommentTok{## read data}
+\CommentTok{##filename <- c("Yuma Metals Project - EMR 19Jun20.xlsx")}
+\NormalTok{filename <-}\StringTok{ }\KeywordTok{c}\NormalTok{(}\StringTok{"Yuma Metals Project_EMR_Editted 23Aug2021 mental health & ID removed.xlsx"}\NormalTok{) }\CommentTok{## new data set}
+
+\CommentTok{#Set working directory for my computer - JKH#}
+\KeywordTok{setwd}\NormalTok{(}\StringTok{"~/Desktop/Research/Yuma/Yuma - R Project/"}\NormalTok{)}
+
+\NormalTok{tmp <-}\StringTok{ }\KeywordTok{read_excel}\NormalTok{(filename, }\DataTypeTok{sheet=}\DecValTok{3}\NormalTok{)}
+\KeywordTok{dim}\NormalTok{(tmp) }\CommentTok{## 330 222 ## same dimensions}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] 330 199
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+ \KeywordTok{names}\NormalTok{(tmp)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##   [1] "ID"                        "Mn55"                     
+##   [3] "Cu65"                      "Cd111"                    
+##   [5] "Hg202"                     "Pb208"                    
+##   [7] "U238"                      "Site"                     
+##   [9] "Date"                      "Gender"                   
+##  [11] "DOB_month"                 "DOB_day"                  
+##  [13] "DOB_year"                  "DOB"                      
+##  [15] "Ethnicity"                 "Race_ai_an"               
+##  [17] "Race_asian"                "Race_black"               
+##  [19] "Race_pac_isl"              "Race_white"               
+##  [21] "Race_other"                "Race_dk"                  
+##  [23] "Race_refuse"               "Race_other_TEXT"          
+##  [25] "Marital_status"            "Num_in_household"         
+##  [27] "Num_children"              "Child_under_18"           
+##  [29] "Education"                 "Education_TEXT"           
+##  [31] "Birth_country"             "Birth_country_TEXT"       
+##  [33] "Armed_forces"              "Army"                     
+##  [35] "Navy"                      "Marine_corp"              
+##  [37] "Air_force"                 "Coast_guard"              
+##  [39] "Other"                     "Armed_forces_dk"          
+##  [41] "Armed_forces_refuse"       "Armed_forces_TEXT"        
+##  [43] "Work_for_pay"              "Self_employed"            
+##  [45] "Looking"                   "Laid_off"                 
+##  [47] "Retired"                   "Homemaker"                
+##  [49] "Student"                   "Disabled"                 
+##  [51] "Maternity_sick_leave"      "employ_other"             
+##  [53] "employ_other_A"            "employ_dk"                
+##  [55] "employ_TEXT"               "Occupation"               
+##  [57] "Farmer"                    "Pesticides"               
+##  [59] "Lived_in_Yuma"             "Born_in_Yuma"             
+##  [61] "Yuma_pregnant_mom"         "Residence_type"           
+##  [63] "Residence_TEXT"            "Own_rent"                 
+##  [65] "Own_rent_TEXT"             "Homeless"                 
+##  [67] "Water_home"                "Water_home_TEXT"          
+##  [69] "Water_cooking"             "Water_cooking_TEXT"       
+##  [71] "Water_coffee"              "Water_coffee_TEXT"        
+##  [73] "Water_work"                "Water_work_TEXT"          
+##  [75] "Health_care"               "Health_care_source"       
+##  [77] "Health_care_source_TEXT"   "Healthcare_lastyear"      
+##  [79] "Health_consult"            "Health_consult_place"     
+##  [81] "Health_consult_place_TEXT" "Routine_care"             
+##  [83] "Routine_care_TEXT"         "Doctor_time"              
+##  [85] "ER_visits"                 "afford_rx_meds"           
+##  [87] "afford_mh_care"            "afford_dental_care"       
+##  [89] "afford_eyeglasses"         "afford_specialist"        
+##  [91] "afford_follow_up"          "Delay_telephone"          
+##  [93] "Delay_appt"                "Delay_wait"               
+##  [95] "Delay_open"                "Delay_transportation"     
+##  [97] "Mental_health"             "General_health"           
+##  [99] "Health_compare"            "Height_ft"                
+## [101] "Height_inch"               "Weight"                   
+## [103] "Overweight"                "Dental_visit"             
+## [105] "Dental_health"             "arthritis"                
+## [107] "gout"                      "chf"                      
+## [109] "chd"                       "angnia"                   
+## [111] "heart_attack"              "stroke"                   
+## [113] "emphysema"                 "thyroid_prob"             
+## [115] "hyperthyroid"              "hypothyroid"              
+## [117] "thyroid_cancer"            "goiter"                   
+## [119] "weak_kidney"               "cancer"                   
+## [121] "pos"                       "undescended"              
+## [123] "ambiguous"                 "HTN"                      
+## [125] "HTN_hx_meds"               "HTN_current_med"          
+## [127] "Cholesterol"               "Chol_med"                 
+## [129] "Diabetes"                  "DM_age"                   
+## [131] "DM_age_TEXT"               "insulin"                  
+## [133] "diabetic_pills"            "Income"                   
+## [135] "age"                       "thyroid_prob_D"           
+## [137] "Hyper_D"                   "Hypo_D"                   
+## [139] "Thyroid_cancer_D"          "Goiter_D"                 
+## [141] "thyroid_conditions"        "clinical"                 
+## [143] "endo"                      "fT3"                      
+## [145] "TSH"                       "fT4"                      
+## [147] "TotalT4"                   "TotalT3"                  
+## [149] "Cortisol"                  "latitude"                 
+## [151] "longitude"                 "emr_height_inches"        
+## [153] "emr_weight"                "emr_bmi"                  
+## [155] "emr_thyroid_problem"       "emr_hyperthyroidism"      
+## [157] "emr_hypothyroidism"        "emr_thyroid_cancer"       
+## [159] "emr_goiter"                "emr_cancer"               
+## [161] "emr_pos"                   "emr_diabetes"             
+## [163] "emr_obesity"               "sc"                       
+## [165] "emr_sud"                   "emr_asd"                  
+## [167] "meds"                      "meds_name"                
+## [169] "thyroid_med"               "free_t3_med"              
+## [171] "tsh_med"                   "total_t4_med"             
+## [173] "free_t4_med"               "total_t3_med"             
+## [175] "cortisol_med"              "Fe_57"                    
+## [177] "As_75"                     "height_total"             
+## [179] "bmi"                       "age_group"                
+## [181] "Site_Collapsed"            "hyper_recode"             
+## [183] "hypo_recode"               "thy_cancer_recode"        
+## [185] "goiter_recode"             "pos_recode"               
+## [187] "dm_recode"                 "emr_dm_recode"            
+## [189] "sud"                       "tobacco_history"          
+## [191] "number_years"              "pack_per_day"             
+## [193] "quit_date"                 "tremor"                   
+## [195] "FAC1_1"                    "FAC2_1"                   
+## [197] "FAC3_1"                    "FAC4_1"                   
+## [199] "FAC5_1"
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+ \CommentTok{##  [1] "ID"                        "Mn55"                     }
+ \CommentTok{##  [3] "Cu65"                      "Cd111"                    }
+ \CommentTok{##  [5] "Hg202"                     "Pb206"                    }
+ \CommentTok{##  [7] "Pb207"                     "PB208"                    }
+ \CommentTok{##  [9] "U238"                      "Site"                     }
+ \CommentTok{## [11] "Date"                      "Gender"                   }
+
+\CommentTok{## head(tmp)}
+
+\KeywordTok{hist}\NormalTok{(tmp}\OperatorTok{$}\NormalTok{As_}\DecValTok{75}\NormalTok{) }\CommentTok{#removed from analysis due to negative values - JKH}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{yuma-metals-20210821_files/figure-latex/setup-1.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{sum}\NormalTok{(}\OperatorTok{!}\KeywordTok{is.na}\NormalTok{(tmp}\OperatorTok{$}\NormalTok{Fe_}\DecValTok{57}\NormalTok{)) }\CommentTok{#removed from analysis due to very low number of samples (n=20) - JKH}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] 20
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{sum}\NormalTok{(}\OperatorTok{!}\KeywordTok{is.na}\NormalTok{(tmp}\OperatorTok{$}\NormalTok{As_}\DecValTok{75}\NormalTok{)) }\CommentTok{#this one only has 47, and 12 of them (~25%) are negative values. - JKH}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] 47
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{## keep only ID, metals and Site, cast to data frame}
+\NormalTok{metals <-}\StringTok{ }\KeywordTok{data.frame}\NormalTok{(tmp[,}\KeywordTok{c}\NormalTok{(}\DecValTok{1}\OperatorTok{:}\DecValTok{8}\NormalTok{)])}
+\KeywordTok{names}\NormalTok{(metals)  }\CommentTok{## omitted Pb206 and Pb207}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] "ID"    "Mn55"  "Cu65"  "Cd111" "Hg202" "Pb208" "U238"  "Site"
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{## metals check format}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{perform-initial-checks-and-summary}{%
+\subsection{Perform Initial Checks and
+Summary}\label{perform-initial-checks-and-summary}}
+
+The summary below shows there are 123 NAs for nearly all of the metals.
+Hg202 is the exception with 212 NAs.
+
+Data exploration shows that the NA pattern is consistent across the
+metals. If one is missing, all are missing.
+
+There are fewer measures at site 1. More missing values at site 1
+(51/78) and at site 3 (48/126) compared with site 2 (24/126)
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{## Initial summary}
+\KeywordTok{summary}\NormalTok{(metals)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##       ID                 Mn55             Cu65               Cd111       
+##  Length:330         Min.   :  0.06   Min.   :   0.1626   Min.   :0.0495  
+##  Class :character   1st Qu.:  0.36   1st Qu.:  10.4350   1st Qu.:0.0495  
+##  Mode  :character   Median :  0.75   Median :  20.7800   Median :0.0495  
+##                     Mean   :  3.68   Mean   :  76.2073   Mean   :0.1292  
+##                     3rd Qu.:  1.72   3rd Qu.:  49.9650   3rd Qu.:0.0495  
+##                     Max.   :103.32   Max.   :1704.1300   Max.   :3.1000  
+##                     NA's   :123      NA's   :123         NA's   :123     
+##      Hg202              Pb208             U238               Site      
+##  Min.   : 0.00707   Min.   : 0.020   Min.   : 0.03536   Min.   :1.000  
+##  1st Qu.: 0.13050   1st Qu.: 0.180   1st Qu.: 0.03536   1st Qu.:2.000  
+##  Median : 0.27300   Median : 0.440   Median : 0.08000   Median :2.000  
+##  Mean   : 1.59401   Mean   : 1.825   Mean   : 0.36315   Mean   :2.145  
+##  3rd Qu.: 0.48325   3rd Qu.: 1.160   3rd Qu.: 0.21500   3rd Qu.:3.000  
+##  Max.   :60.17500   Max.   :76.450   Max.   :21.08000   Max.   :3.000  
+##  NA's   :212        NA's   :123      NA's   :123
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{## Number of Observations per Site}
+\KeywordTok{table}\NormalTok{(metals}\OperatorTok{$}\NormalTok{Site) }\CommentTok{## 78 126 and 126.  Fewer at site 1}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## 
+##   1   2   3 
+##  78 126 126
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{## Number of values > BDL by Site}
+\KeywordTok{table}\NormalTok{(metals}\OperatorTok{$}\NormalTok{Site, }\OperatorTok{!}\KeywordTok{is.na}\NormalTok{(metals[,}\DecValTok{2}\NormalTok{])) }\CommentTok{## Observation indicator by site}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##    
+##     FALSE TRUE
+##   1    51   27
+##   2    24  102
+##   3    48   78
+\end{verbatim}
+
+\hypertarget{metals-concentrations}{%
+\subsubsection{Metals Concentrations}\label{metals-concentrations}}
+
+The figure below shows metals concentrations on log10 scale. NA values
+are omitted.
+
+The shape of the Pb distributions are nearly identical (omitted 206 and
+207). On the whole, these distributions are not as bad as I feared. All
+are stil right-skewed after transformation, but they do not look
+pathologic.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{## change from wide to long format for plotting}
+
+\NormalTok{metals }\OperatorTok{%>%}\StringTok{ }\KeywordTok{pivot_longer}\NormalTok{(}\OperatorTok{-}\KeywordTok{c}\NormalTok{(ID, Site), }\DataTypeTok{names_to=}\StringTok{"Metal"}\NormalTok{, }\DataTypeTok{values_to=}\StringTok{"Concentration"}\NormalTok{) }\OperatorTok{%>%}
+\StringTok{    }\KeywordTok{ggplot}\NormalTok{(}\KeywordTok{aes}\NormalTok{(}\DataTypeTok{x=}\NormalTok{Concentration)) }\OperatorTok{+}\StringTok{ }\KeywordTok{geom_density}\NormalTok{() }\OperatorTok{+}
+\StringTok{        }\KeywordTok{scale_x_log10}\NormalTok{() }\OperatorTok{+}\StringTok{ }\KeywordTok{facet_wrap}\NormalTok{(}\OperatorTok{~}\StringTok{ }\NormalTok{Metal) }\OperatorTok{+}
+\StringTok{            }\KeywordTok{ggtitle}\NormalTok{(}\StringTok{"Distributions of Metals Concentrations (log10 transform)"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Warning: Removed 827 rows containing non-finite values (stat_density).
+\end{verbatim}
+
+\begin{figure}
+\centering
+\includegraphics{yuma-metals-20210821_files/figure-latex/intitialPlots-1.pdf}
+\caption{Metals concentrations - log10 scale}
+\end{figure}
+
+\hypertarget{remove-missing-values}{%
+\subsubsection{Remove Missing Values}\label{remove-missing-values}}
+
+Values labeled as NA across (nearly all metals) are not measured. For
+each observation with missing metals, omit the observation. In addition
+there are 89 observations with missing Hg values. We may impute these
+missing values based on site and other observed metals
+
+\emph{Note} - Other BDL values are replaced with 1/2 the limit of
+detection.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{names}\NormalTok{(metals)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] "ID"    "Mn55"  "Cu65"  "Cd111" "Hg202" "Pb208" "U238"  "Site"
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{metals.obs <-}\StringTok{ }\NormalTok{metals[}\OperatorTok{!}\KeywordTok{is.na}\NormalTok{(metals[,}\DecValTok{2}\NormalTok{]), ]}
+\CommentTok{## for Hg, replace NA and zero with 0.029/sqrt(2)}
+\CommentTok{##sort(metals.obs[,"Hg202"])}
+\CommentTok{## Hg.subs <- 0.029 /sqrt(2)}
+
+\NormalTok{metals.complete.cases <-}\StringTok{ }\NormalTok{metals.obs }\OperatorTok{%>%}\StringTok{ }\KeywordTok{filter}\NormalTok{(}\OperatorTok{!}\KeywordTok{is.na}\NormalTok{(Cu65)) }\OperatorTok{%>%}\StringTok{ }
+\StringTok{    }\KeywordTok{filter}\NormalTok{(}\OperatorTok{!}\KeywordTok{is.na}\NormalTok{(Hg202)) }\CommentTok{## ID R1108 also missing Hg, other metals observed}
+
+\KeywordTok{dim}\NormalTok{(metals.complete.cases) }\CommentTok{## 111 8 wow - small data set}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] 111   8
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{summary}\NormalTok{(metals.complete.cases)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##       ID                 Mn55              Cu65               Cd111        
+##  Length:111         Min.   :  0.070   Min.   :   0.1626   Min.   :0.04950  
+##  Class :character   1st Qu.:  0.355   1st Qu.:  14.1900   1st Qu.:0.04950  
+##  Mode  :character   Median :  0.810   Median :  24.7600   Median :0.04950  
+##                     Mean   :  4.727   Mean   :  94.9425   Mean   :0.13170  
+##                     3rd Qu.:  2.175   3rd Qu.:  73.0850   3rd Qu.:0.06475  
+##                     Max.   :103.320   Max.   :1088.6500   Max.   :2.87000  
+##      Hg202              Pb208             U238              Site      
+##  Min.   : 0.00707   Min.   : 0.020   Min.   :0.03535   Min.   :1.000  
+##  1st Qu.: 0.14550   1st Qu.: 0.185   1st Qu.:0.03535   1st Qu.:2.000  
+##  Median : 0.29100   Median : 0.450   Median :0.08000   Median :2.000  
+##  Mean   : 1.68130   Mean   : 2.230   Mean   :0.34223   Mean   :2.216  
+##  3rd Qu.: 0.49500   3rd Qu.: 1.225   3rd Qu.:0.24500   3rd Qu.:3.000  
+##  Max.   :60.17500   Max.   :76.450   Max.   :9.24000   Max.   :3.000
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{metals.impute.Hg <-}\StringTok{ }\NormalTok{metals.obs }\OperatorTok{%>%}\StringTok{ }\KeywordTok{filter}\NormalTok{(}\OperatorTok{!}\KeywordTok{is.na}\NormalTok{(Cu65)) }\OperatorTok{%>%}\StringTok{ }
+\StringTok{    }\KeywordTok{filter}\NormalTok{(}\KeywordTok{is.na}\NormalTok{(Hg202))}
+
+\NormalTok{metals.complete.log10 <-}\StringTok{ }\KeywordTok{cbind}\NormalTok{(}\DataTypeTok{ID=}\NormalTok{metals.complete.cases[,}\StringTok{"ID"}\NormalTok{],}
+                               \KeywordTok{log10}\NormalTok{(metals.complete.cases[,}\DecValTok{2}\OperatorTok{:}\DecValTok{7}\NormalTok{]),}
+                               \DataTypeTok{Site=}\NormalTok{metals.complete.cases[,}\StringTok{"Site"}\NormalTok{])}
+
+\KeywordTok{summary}\NormalTok{(metals.complete.log10)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##       ID                 Mn55               Cu65             Cd111        
+##  Length:111         Min.   :-1.15490   Min.   :-0.7888   Min.   :-1.3054  
+##  Class :character   1st Qu.:-0.45016   1st Qu.: 1.1520   1st Qu.:-1.3054  
+##  Mode  :character   Median :-0.09151   Median : 1.3938   Median :-1.3054  
+##                     Mean   : 0.05038   Mean   : 1.5370   Mean   :-1.1448  
+##                     3rd Qu.: 0.33745   3rd Qu.: 1.8638   3rd Qu.:-1.2012  
+##                     Max.   : 2.01418   Max.   : 3.0369   Max.   : 0.4579  
+##      Hg202             Pb208               U238              Site      
+##  Min.   :-2.1505   Min.   :-1.69897   Min.   :-1.4515   Min.   :1.000  
+##  1st Qu.:-0.8373   1st Qu.:-0.73299   1st Qu.:-1.4515   1st Qu.:2.000  
+##  Median :-0.5361   Median :-0.34679   Median :-1.0969   Median :2.000  
+##  Mean   :-0.5300   Mean   :-0.31046   Mean   :-0.9353   Mean   :2.216  
+##  3rd Qu.:-0.3055   3rd Qu.: 0.08784   3rd Qu.:-0.6109   3rd Qu.:3.000  
+##  Max.   : 1.7794   Max.   : 1.88338   Max.   : 0.9657   Max.   :3.000
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{round}\NormalTok{(}\KeywordTok{cor}\NormalTok{(metals.complete.log10[,}\DecValTok{2}\OperatorTok{:}\DecValTok{7}\NormalTok{]), }\DecValTok{2}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##       Mn55 Cu65 Cd111 Hg202 Pb208 U238
+## Mn55  1.00 0.48  0.46  0.07  0.55 0.15
+## Cu65  0.48 1.00  0.30  0.15  0.59 0.20
+## Cd111 0.46 0.30  1.00  0.15  0.60 0.20
+## Hg202 0.07 0.15  0.15  1.00  0.21 0.09
+## Pb208 0.55 0.59  0.60  0.21  1.00 0.26
+## U238  0.15 0.20  0.20  0.09  0.26 1.00
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{metals.impute.log10 <-}\StringTok{ }\KeywordTok{cbind}\NormalTok{(}\DataTypeTok{ID=}\NormalTok{metals.impute.Hg[,}\StringTok{"ID"}\NormalTok{],}
+                               \KeywordTok{log10}\NormalTok{(metals.impute.Hg[,}\DecValTok{2}\OperatorTok{:}\DecValTok{7}\NormalTok{]),}
+                               \DataTypeTok{Site=}\NormalTok{metals.impute.Hg[,}\StringTok{"Site"}\NormalTok{])}
+\KeywordTok{summary}\NormalTok{(metals.impute.log10)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##       ID                 Mn55               Cu65             Cd111        
+##  Length:95          Min.   :-1.22185   Min.   :-0.7888   Min.   :-1.3054  
+##  Class :character   1st Qu.:-0.43807   1st Qu.: 0.9668   1st Qu.:-1.3054  
+##  Mode  :character   Median :-0.16749   Median : 1.1884   Median :-1.3054  
+##                     Mean   :-0.09223   Mean   : 1.1755   Mean   :-1.1551  
+##                     3rd Qu.: 0.09320   3rd Qu.: 1.4984   3rd Qu.:-1.3054  
+##                     Max.   : 1.56785   Max.   : 3.2315   Max.   : 0.4914  
+##                                                                           
+##      Hg202         Pb208               U238              Site      
+##  Min.   : NA   Min.   :-1.69897   Min.   :-1.4515   Min.   :1.000  
+##  1st Qu.: NA   1st Qu.:-0.76955   1st Qu.:-1.4515   1st Qu.:2.000  
+##  Median : NA   Median :-0.38722   Median :-1.1549   Median :2.000  
+##  Mean   :NaN   Mean   :-0.33314   Mean   :-1.0172   Mean   :2.284  
+##  3rd Qu.: NA   3rd Qu.:-0.02228   3rd Qu.:-0.7447   3rd Qu.:3.000  
+##  Max.   : NA   Max.   : 1.30168   Max.   : 1.3239   Max.   :3.000  
+##  NA's   :95
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{metals.impute.Hg}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##       ID  Mn55         Cu65      Cd111 Hg202 Pb208        U238 Site
+## 1  R1005  0.39   59.8300000 0.04949747    NA  0.36  0.03535534    2
+## 2  R1001  1.43   33.5000000 0.04949747    NA  0.17  0.07000000    2
+## 3  C1005 17.88  179.6800000 0.28000000    NA 20.03  0.14000000    1
+## 4  R1011  0.68   44.3900000 0.04949747    NA  0.27  0.06000000    2
+## 5  R1009 12.87   13.6600000 0.18000000    NA  6.51  0.25000000    2
+## 6  C1013  0.82    9.2600000 0.04949747    NA  0.30  0.03535534    1
+## 7  C1014  0.51   32.0500000 0.04949747    NA  0.26  0.03535534    1
+## 8  R1018  0.40   18.8100000 0.04949747    NA  0.06  0.03535534    2
+## 9  R1019  0.96    9.6300000 0.13000000    NA  2.87  0.03535534    2
+## 10 C1017  0.28   13.9100000 0.04949747    NA  0.11  0.03535534    1
+## 11 C1022  1.20   22.6400000 0.04949747    NA  0.95  0.15000000    1
+## 12 C1026  0.17    6.2200000 0.04949747    NA  1.72  0.22000000    1
+## 13 C1018  0.16   22.8200000 0.04949747    NA  0.08  0.23000000    1
+## 14 R1021  1.28    0.1626346 0.04949747    NA  0.68  0.03535534    2
+## 15 R1022  1.11   97.6600000 0.04949747    NA  0.62  0.64000000    2
+## 16 R1025  3.33   29.4200000 0.11000000    NA  5.46  0.37000000    2
+## 17 R1026  2.03   21.9900000 0.42000000    NA  0.95  0.25000000    2
+## 18 R1032  0.54   32.1600000 0.04949747    NA  0.81  1.50000000    2
+## 19 R1043  1.05   13.6900000 0.04949747    NA  0.53  0.06000000    2
+## 20 R1050  0.75   20.7800000 0.04949747    NA  0.04  0.03535534    2
+## 21 R1049  0.18    7.0400000 0.04949747    NA  0.48  0.03535534    2
+## 22 R1051 11.08   15.6500000 0.04949747    NA  0.14  0.05000000    2
+## 23 R1062  0.57    0.1626346 0.04949747    NA  0.02  0.03535534    2
+## 24 R1035  0.47   59.0400000 0.04949747    NA  0.38  0.03535534    2
+## 25 R1059  0.78   23.8800000 0.04949747    NA  1.25  0.03535534    2
+## 26 C1035  0.46    9.8000000 0.04949747    NA  0.73  0.03535534    1
+## 27 C1038  0.71    9.4900000 0.17000000    NA  0.88  0.03535534    1
+## 28 C1037  0.81    3.3000000 0.09000000    NA  1.69  0.03535534    1
+## 29 C1036  1.71   27.6000000 0.04949747    NA  0.06  0.05000000    1
+## 30 R1038  0.50   19.5300000 0.12000000    NA  0.41  0.13000000    2
+## 31 R1070  0.49   32.3300000 0.04949747    NA  0.12  0.03535534    2
+## 32 R1040  0.81   27.0800000 0.04949747    NA  0.68  0.03535534    2
+## 33 R1071  6.16   12.0800000 0.04949747    NA  1.15  0.22000000    2
+## 34 R1074  0.61    4.6500000 0.04949747    NA  0.40  0.38000000    2
+## 35 R1084  1.00   43.8200000 0.04949747    NA  0.16  0.03535534    2
+## 36 R1082 21.35  131.1400000 0.04949747    NA  1.17  0.03535534    2
+## 37 R1086  5.91  149.6300000 0.14000000    NA  1.52  0.29000000    2
+## 38 R1093  0.35   10.1400000 0.04949747    NA  0.41  0.03535534    2
+## 39 R1102  0.35   21.7900000 0.04949747    NA  0.10  0.03535534    2
+## 40 R1103  0.30   47.7300000 0.04949747    NA  0.58  0.03535534    2
+## 41 C1057  2.28    0.1626346 0.04949747    NA  3.19  0.03535534    1
+## 42 R1101  0.54   62.4500000 0.04949747    NA  0.78  0.11000000    2
+## 43 R1107  0.76   19.5300000 0.04949747    NA  0.61  0.05000000    2
+## 44 R1109  6.77  417.0400000 0.30000000    NA 13.79  1.10000000    2
+## 45 R1112  0.55   13.0900000 0.04949747    NA  1.20  0.17000000    2
+## 46 R1110  1.46    9.4500000 0.04949747    NA  1.75  0.20000000    2
+## 47 Y1019  0.15    6.0300000 0.04949747    NA  0.06  0.03535534    3
+## 48 Y1017  1.02   16.9600000 0.04949747    NA  1.48  0.06000000    3
+## 49 Y1018  0.38    8.7900000 0.04949747    NA  0.38  0.42000000    3
+## 50 Y1020  0.24   30.1000000 0.04949747    NA  0.14  0.10000000    3
+## 51 Y1021  0.34   21.7100000 0.04949747    NA  0.21  0.92000000    3
+## 52 Y1024  0.38   12.9100000 0.04949747    NA  0.13  0.11000000    3
+## 53 Y1023  0.41   10.1000000 0.04949747    NA  0.34  0.18000000    3
+## 54 R1116 12.11 1704.1300000 0.34000000    NA 16.40  0.76000000    2
+## 55 Y1026  0.41    7.6400000 0.04949747    NA  0.51  0.13000000    3
+## 56 Y1028  1.06   74.7500000 0.04949747    NA  0.31  0.18000000    3
+## 57 R1121  1.18   51.0100000 0.12000000    NA  1.41  0.14000000    2
+## 58 R1122  0.61  244.5900000 0.11000000    NA  0.13  0.16000000    2
+## 59 C1046  5.59   30.9600000 0.04949747    NA  0.67  0.03535534    1
+## 60 R1123  0.75   11.3400000 0.04949747    NA  0.29  0.31000000    2
+## 61 R1125  0.66   31.2100000 1.00000000    NA  0.86  0.03535534    2
+## 62 Y1036  0.06    3.5500000 0.04949747    NA  0.21  0.26000000    3
+## 63 Y1043  0.08   11.0700000 0.04949747    NA  0.40  0.15000000    3
+## 64 Y1047 31.39   18.9300000 0.14000000    NA  1.86  1.00000000    3
+## 65 Y1065  0.46   28.6700000 0.04949747    NA  0.25  0.03535534    3
+## 66 Y1048  0.23   30.5000000 0.47000000    NA  0.31  0.03535534    3
+## 67 Y1066  0.14   14.1600000 0.04949747    NA  0.15  0.07000000    3
+## 68 Y1063  0.21    9.2700000 0.04949747    NA  0.51  0.09000000    3
+## 69 Y1045  0.55    9.9700000 0.04949747    NA  0.20  0.14000000    3
+## 70 Y1060  0.14   10.8600000 0.04949747    NA  0.17  0.70000000    3
+## 71 Y1069  0.31   19.8400000 0.04949747    NA  0.10  0.03535534    3
+## 72 Y1075  0.86  185.8700000 3.10000000    NA  0.86  0.03535534    3
+## 73 Y1070  0.93    0.1626346 0.04949747    NA  1.72  0.13000000    3
+## 74 Y1076  0.28    6.6900000 0.04949747    NA  0.12  0.03535534    3
+## 75 Y1077  0.68   15.4300000 0.04949747    NA  0.19  0.03535534    3
+## 76 Y1072  0.13    5.9300000 0.04949747    NA  0.06  0.09000000    3
+## 77 Y1073  0.17    5.9000000 0.04949747    NA  0.16  0.09000000    3
+## 78 Y1068  0.67    9.8500000 0.04949747    NA  0.16  0.34000000    3
+## 79 Y1085  1.72    6.0000000 0.10000000    NA  0.85  0.03535534    3
+## 80 Y1088  0.47    6.7400000 0.04949747    NA  0.17  0.03535534    3
+## 81 Y1086  0.69    3.1100000 0.04949747    NA  0.18  0.03535534    3
+## 82 Y1090  0.70    1.5200000 0.04949747    NA  2.06  0.03535534    3
+## 83 Y1087  1.08   31.8000000 0.04949747    NA  0.83  0.12000000    3
+## 84 Y1096  0.31   14.9800000 0.04949747    NA  0.39  0.03535534    3
+## 85 Y1099 36.97   18.7300000 0.33000000    NA  0.86  0.03535534    3
+## 86 Y1098  0.77   48.4900000 0.58000000    NA  2.92  0.16000000    3
+## 87 Y1097  0.79   41.7600000 0.04949747    NA  0.11  0.25000000    3
+## 88 Y1064  4.98    0.1626346 0.04949747    NA 10.17 21.08000000    3
+## 89 Y1121  1.42   12.5500000 0.04949747    NA  0.09  0.03535534    3
+## 90 Y1119  0.33    6.6000000 0.04949747    NA  0.86  0.17000000    3
+## 91 Y1125  2.15    0.1626346 0.04949747    NA  1.59  0.03535534    3
+## 92 Y1127  2.32   10.3300000 0.04949747    NA  0.34  0.16000000    3
+## 93 Y1126  0.29    4.9300000 0.04949747    NA  0.25  0.39000000    3
+## 94 C1104  3.67  506.8900000 0.18000000    NA  0.87  0.03535534    1
+## 95 Y1008  0.14   12.6100000 0.04949747    NA  0.03  0.15000000    2
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{### fit regression line for Hg}
+\NormalTok{Hg.lm <-}\StringTok{ }\KeywordTok{lm}\NormalTok{(Hg202 }\OperatorTok{~}\StringTok{ }\KeywordTok{as.factor}\NormalTok{(Site) }\OperatorTok{+}\StringTok{ }\NormalTok{Mn55 }\OperatorTok{+}\StringTok{ }\NormalTok{Cu65 }\OperatorTok{+}\StringTok{ }\NormalTok{Cd111 }\OperatorTok{+}\StringTok{ }\NormalTok{Pb208 }\OperatorTok{+}\StringTok{ }\NormalTok{U238,}
+            \DataTypeTok{data=}\NormalTok{metals.complete.log10) }
+\KeywordTok{qplot}\NormalTok{(metals.complete.log10[,}\StringTok{"Hg202"}\NormalTok{], }\KeywordTok{predict}\NormalTok{(Hg.lm))}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{yuma-metals-20210821_files/figure-latex/omitmissing-1.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{qplot}\NormalTok{( }\KeywordTok{predict}\NormalTok{(Hg.lm), }\KeywordTok{resid}\NormalTok{(Hg.lm))}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{yuma-metals-20210821_files/figure-latex/omitmissing-2.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{Hg.imputed <-}\StringTok{  }\KeywordTok{predict}\NormalTok{(Hg.lm, }\DataTypeTok{newdata=}\NormalTok{metals.impute.log10)}
+
+\NormalTok{metals.fillin.log10 <-}\StringTok{ }\NormalTok{metals.impute.log10}
+\NormalTok{metals.fillin.log10[,}\StringTok{"Hg202"}\NormalTok{] <-}\StringTok{ }\NormalTok{Hg.imputed}
+
+\KeywordTok{summary}\NormalTok{(metals.fillin.log10)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##       ID                 Mn55               Cu65             Cd111        
+##  Length:95          Min.   :-1.22185   Min.   :-0.7888   Min.   :-1.3054  
+##  Class :character   1st Qu.:-0.43807   1st Qu.: 0.9668   1st Qu.:-1.3054  
+##  Mode  :character   Median :-0.16749   Median : 1.1884   Median :-1.3054  
+##                     Mean   :-0.09223   Mean   : 1.1755   Mean   :-1.1551  
+##                     3rd Qu.: 0.09320   3rd Qu.: 1.4984   3rd Qu.:-1.3054  
+##                     Max.   : 1.56785   Max.   : 3.2315   Max.   : 0.4914  
+##      Hg202             Pb208               U238              Site      
+##  Min.   :-0.9754   Min.   :-1.69897   Min.   :-1.4515   Min.   :1.000  
+##  1st Qu.:-0.6857   1st Qu.:-0.76955   1st Qu.:-1.4515   1st Qu.:2.000  
+##  Median :-0.5787   Median :-0.38722   Median :-1.1549   Median :2.000  
+##  Mean   :-0.5607   Mean   :-0.33314   Mean   :-1.0172   Mean   :2.284  
+##  3rd Qu.:-0.4261   3rd Qu.:-0.02228   3rd Qu.:-0.7447   3rd Qu.:3.000  
+##  Max.   :-0.1436   Max.   : 1.30168   Max.   : 1.3239   Max.   :3.000
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{## combine complete cases with Hg imputed cases}
+\NormalTok{metals.allobs.log10 <-}\StringTok{ }\KeywordTok{rbind}\NormalTok{(metals.complete.log10, metals.fillin.log10)}
+\CommentTok{## dim(metals.allobs.log10) ## 206 8  ## OK obs with missing Cu65 is omitted.}
+\CommentTok{## dim(metals.obs) ## 207 8}
+
+\CommentTok{## check summary}
+\KeywordTok{summary}\NormalTok{(metals.allobs.log10)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##       ID                 Mn55               Cu65             Cd111        
+##  Length:206         Min.   :-1.22185   Min.   :-0.7888   Min.   :-1.3054  
+##  Class :character   1st Qu.:-0.44990   1st Qu.: 1.0261   1st Qu.:-1.3054  
+##  Mode  :character   Median :-0.12494   Median : 1.3212   Median :-1.3054  
+##                     Mean   :-0.01539   Mean   : 1.3703   Mean   :-1.1495  
+##                     3rd Qu.: 0.23553   3rd Qu.: 1.7031   3rd Qu.:-1.3054  
+##                     Max.   : 2.01418   Max.   : 3.2315   Max.   : 0.4914  
+##      Hg202             Pb208               U238              Site      
+##  Min.   :-2.1505   Min.   :-1.69897   Min.   :-1.4515   Min.   :1.000  
+##  1st Qu.:-0.7322   1st Qu.:-0.74473   1st Qu.:-1.4515   1st Qu.:2.000  
+##  Median :-0.5680   Median :-0.36154   Median :-1.0969   Median :2.000  
+##  Mean   :-0.5442   Mean   :-0.32092   Mean   :-0.9731   Mean   :2.248  
+##  3rd Qu.:-0.3821   3rd Qu.: 0.06446   3rd Qu.:-0.6626   3rd Qu.:3.000  
+##  Max.   : 1.7794   Max.   : 1.88338   Max.   : 1.3239   Max.   :3.000
+\end{verbatim}
+
+\hypertarget{adjusted-hg-imputed-concentrations}{%
+\subsubsection{Adjusted (Hg Imputed)
+Concentrations}\label{adjusted-hg-imputed-concentrations}}
+
+New figure with Hg values imputed using regression on other metals
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{## change from wide to long format for plotting}
+
+\NormalTok{metals.allobs.log10 }\OperatorTok{%>%}\StringTok{ }\KeywordTok{pivot_longer}\NormalTok{(}\OperatorTok{-}\KeywordTok{c}\NormalTok{(ID, Site), }\DataTypeTok{names_to=}\StringTok{"Metal"}\NormalTok{, }\DataTypeTok{values_to=}\StringTok{"Concentration"}\NormalTok{) }\OperatorTok{%>%}
+\StringTok{    }\KeywordTok{ggplot}\NormalTok{(}\KeywordTok{aes}\NormalTok{(}\DataTypeTok{x=}\NormalTok{Concentration)) }\OperatorTok{+}\StringTok{ }\KeywordTok{geom_density}\NormalTok{() }\OperatorTok{+}
+\StringTok{         }\KeywordTok{facet_wrap}\NormalTok{(}\OperatorTok{~}\StringTok{ }\NormalTok{Metal) }\OperatorTok{+}
+\StringTok{            }\KeywordTok{ggtitle}\NormalTok{(}\StringTok{"Distributions of Metals Concentrations (missin Hg values imputed, log10 transform)"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{figure}
+\centering
+\includegraphics{yuma-metals-20210821_files/figure-latex/checkPlots-1.pdf}
+\caption{Metals concentrations - log10 scale}
+\end{figure}
+
+\hypertarget{robust-pca}{%
+\subsection{Robust PCA}\label{robust-pca}}
+
+Now we move on to Robust PCA. We use the method described by the
+following papers.
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\item
+  Hubert, M., Rousseeuw, P. J., and Vanden Branden, K. (2005), ``ROBPCA:
+  A New Approach to Robust Principal Component Analysis,''
+  Technometrics, 47, 64--79.
+\item
+  Engelen, S., Hubert, M. and Vanden Branden, K. (2005), ``A Comparison
+  of Three Procedures for Robust PCA in High Dimensions'', Austrian
+  Journal of Statistics, 34, 117--126.
+\item
+  Hubert, M., Rousseeuw, P. J., and Verdonck, T. (2009), ``Robust PCA
+  for Skewed Data and Its Outlier Map,'' Computational Statistics \&
+  Data Analysis, 53, 2264--2274.
+\end{enumerate}
+
+This is implemented in the R package \(rospca\)
+
+The plot below shows results from the robust PCA. The ``Score distance''
+describes the leverage that an indvidual point has in determining the
+fitted PCA surface. The ``Orthogonal distance'' shows the distance to
+the fitted surface.
+
+Thus, points 31, 48, 85, and 200 heaviy influence the slope of the PCA
+surface (the loadings). Conversely, point 143 is a large distance from
+the mass of points, but has little influence on the loadings.
+
+The eigenvalues (bottom of the box) show that 61\% of the variation is
+captured in PC1 (41\%) and PC2 (20\%).
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{##install.packages("rospca", repos="http://cran.r-project.org")}
+\KeywordTok{library}\NormalTok{(rospca)}
+
+\CommentTok{##dim(metals.adjusted)}
+\CommentTok{##metals.log10 <- as.matrix(log10(metals.adjusted[, 2:7]))}
+\KeywordTok{colnames}\NormalTok{(metals.allobs.log10)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] "ID"    "Mn55"  "Cu65"  "Cd111" "Hg202" "Pb208" "U238"  "Site"
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{## round(cor(metals.log10), 2) ## check pairwise correlation}
+\CommentTok{### == original full PCA}
+
+\NormalTok{metals.pca <-}\StringTok{ }\KeywordTok{robpca}\NormalTok{(metals.allobs.log10[,}\DecValTok{2}\OperatorTok{:}\DecValTok{7}\NormalTok{], }\DataTypeTok{k=}\DecValTok{5}\NormalTok{, }\DataTypeTok{alpha=}\NormalTok{.}\DecValTok{7}\NormalTok{, }\DataTypeTok{ndir=}\StringTok{"all"}\NormalTok{, }\DataTypeTok{skew=}\NormalTok{T)}
+
+\CommentTok{## Eigenvalues show variation in different components}
+\KeywordTok{cat}\NormalTok{(}\StringTok{"Total Variance in PC1 and PC2}\CharTok{\textbackslash{}n}\StringTok{"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Total Variance in PC1 and PC2
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{round}\NormalTok{(metals.pca[[}\DecValTok{2}\NormalTok{]], }\DecValTok{3}\NormalTok{) }\CommentTok{## variation in PC's is as expected across components}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##   PC1   PC2   PC3   PC4   PC5 
+## 0.416 0.195 0.118 0.107 0.050
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{diagPlot}\NormalTok{(metals.pca)}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{yuma-metals-20210821_files/figure-latex/robpca-1.pdf}
+
+The eigenvalues show that PC1 and PC2 exhibit the majority of the
+variance, PC 3-5 are smaller. In general, the diagnostic plot suggests
+that robust PCA is warranted
+
+\hypertarget{pca-loadings}{%
+\subsubsection{PCA Loadings}\label{pca-loadings}}
+
+The loadings are shown below.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{round}\NormalTok{(metals.pca}\OperatorTok{$}\NormalTok{loadings, }\DecValTok{3}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##         PC1    PC2    PC3    PC4    PC5
+## Mn55  0.581  0.064  0.601 -0.533  0.083
+## Cu65  0.406  0.269 -0.775 -0.394 -0.035
+## Cd111 0.197  0.001 -0.008  0.051  0.007
+## Hg202 0.114 -0.036 -0.086  0.181  0.972
+## Pb208 0.651 -0.002  0.005  0.708 -0.215
+## U238  0.147 -0.960 -0.174 -0.154 -0.041
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{names}\NormalTok{(metals.allobs.log10[,}\DecValTok{2}\OperatorTok{:}\DecValTok{7}\NormalTok{])}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] "Mn55"  "Cu65"  "Cd111" "Hg202" "Pb208" "U238"
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{##plot(metals.pca$loadings, pch=rownames(metals.pca$loadings))}
+\end{Highlighting}
+\end{Shaded}
+
+There are a few of points to notice about the loadings
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\item
+  All components of PC1 have the same sign. As before, this suggests a
+  ``common'' effect to all measurements. For example, all metals tend to
+  be ``high'' or ``low'' together. May be caused either by global
+  high-low exposure of inviduals, or by mass spectrometry measurement
+  issues.
+\item
+  PC1 has highest loading for Pb208, Mn55, and Cu65
+\item
+  For PC2, U238 is the biggest driver.
+\end{enumerate}
+
+\hypertarget{pca-scores-for-individuals}{%
+\subsubsection{PCA Scores for
+Individuals}\label{pca-scores-for-individuals}}
+
+Finally, we look at PCA scores by site. The second figure below shows
+clearly that site 2 has slightly more variation than site 3. But not
+bad. It appears that site 3 may be slightly greater on PC2 than is site
+2.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{metals.pca.df <-}\StringTok{ }\KeywordTok{data.frame}\NormalTok{(}\DataTypeTok{Site=}\KeywordTok{factor}\NormalTok{(metals.allobs.log10}\OperatorTok{$}\NormalTok{Site), metals.pca}\OperatorTok{$}\NormalTok{scores) }\CommentTok{#This is where I updated metals.adjusted$Site to metals.allobs.log10$Site - JKH}
+
+\KeywordTok{qplot}\NormalTok{(}\DataTypeTok{x=}\NormalTok{PC1, }\DataTypeTok{y=}\NormalTok{PC2, }\DataTypeTok{data=}\NormalTok{metals.pca.df, }\DataTypeTok{col=}\NormalTok{Site,}
+      \DataTypeTok{main=}\StringTok{"Robust PCA Scores by Site"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{yuma-metals-20210821_files/figure-latex/pcaplot-1.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{qplot}\NormalTok{(}\DataTypeTok{x=}\NormalTok{PC1, }\DataTypeTok{y=}\NormalTok{PC2, }\DataTypeTok{data=}\NormalTok{metals.pca.df) }\OperatorTok{+}\StringTok{ }\KeywordTok{ggtitle}\NormalTok{(}\StringTok{"Robust PCA Scores by Site"}\NormalTok{) }\OperatorTok{+}
+\StringTok{    }\KeywordTok{facet_wrap}\NormalTok{(}\OperatorTok{~}\StringTok{ }\NormalTok{Site)}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{yuma-metals-20210821_files/figure-latex/pcaplot-2.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{## dim(metals.pca$scores)}
+\CommentTok{## dim(metals.allobs.log10)}
+\CommentTok{## New df on 2021.09.06}
+\NormalTok{metals.robpca <-}\StringTok{ }\KeywordTok{cbind}\NormalTok{(metals.allobs.log10, metals.pca}\OperatorTok{$}\NormalTok{scores)}
+\CommentTok{## dim(metals.robpca)}
+\CommentTok{### about here}
+\KeywordTok{qplot}\NormalTok{(}\DataTypeTok{x=}\NormalTok{PC1, }\DataTypeTok{y=}\NormalTok{Mn55, }\DataTypeTok{data=}\NormalTok{metals.robpca, }\DataTypeTok{col=}\KeywordTok{as.factor}\NormalTok{(Site))}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{yuma-metals-20210821_files/figure-latex/pcaplot-3.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{qplot}\NormalTok{(}\DataTypeTok{x=}\NormalTok{PC1, }\DataTypeTok{y=}\NormalTok{Pb208, }\DataTypeTok{data=}\NormalTok{metals.robpca, }\DataTypeTok{col=}\KeywordTok{as.factor}\NormalTok{(Site))}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{yuma-metals-20210821_files/figure-latex/pcaplot-4.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{qplot}\NormalTok{(}\DataTypeTok{x=}\NormalTok{PC2, }\DataTypeTok{y=}\NormalTok{U238, }\DataTypeTok{data=}\NormalTok{metals.robpca, }\DataTypeTok{col=}\KeywordTok{as.factor}\NormalTok{(Site))}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{yuma-metals-20210821_files/figure-latex/pcaplot-5.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{write.csv}\NormalTok{(metals.robpca, }\DataTypeTok{file=}\StringTok{"metals_Impute_log10_PCA_scores.csv"}\NormalTok{, }\DataTypeTok{quote=}\NormalTok{F, }\DataTypeTok{row.names=}\NormalTok{F)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{pca_No_Hg <-}\StringTok{ }\KeywordTok{robpca}\NormalTok{(metals.allobs.log10[,}\KeywordTok{c}\NormalTok{(}\DecValTok{2}\OperatorTok{:}\DecValTok{4}\NormalTok{, }\DecValTok{6}\NormalTok{, }\DecValTok{7}\NormalTok{)], }\DataTypeTok{k=}\DecValTok{5}\NormalTok{, }\DataTypeTok{alpha=}\NormalTok{.}\DecValTok{7}\NormalTok{, }\DataTypeTok{ndir=}\StringTok{"all"}\NormalTok{,}
+                    \DataTypeTok{skew=}\NormalTok{T)}
+\NormalTok{pca_No_Hg[[}\DecValTok{2}\NormalTok{]] }\CommentTok{## .48  .19 .11}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##        PC1        PC2        PC3        PC4        PC5 
+## 0.47884292 0.18829431 0.10800892 0.08451151 0.01240052
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{round}\NormalTok{(pca_No_Hg}\OperatorTok{$}\NormalTok{loadings, }\DecValTok{2}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##        PC1   PC2   PC3   PC4   PC5
+## Mn55  0.61  0.17  0.02  0.77  0.10
+## Cu65  0.47  0.32  0.68 -0.47  0.03
+## Cd111 0.14 -0.05 -0.01  0.03 -0.99
+## Pb208 0.56  0.03 -0.70 -0.44  0.07
+## U238  0.28 -0.93  0.21 -0.04  0.08
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{## dim(pca_No_Hg$scores) ## 206 5}
+\NormalTok{metals.noHg.robpca <-}\StringTok{ }\KeywordTok{cbind}\NormalTok{(metals.allobs.log10, pca_No_Hg}\OperatorTok{$}\NormalTok{scores)}
+
+\KeywordTok{write.csv}\NormalTok{(metals.noHg.robpca, }\DataTypeTok{file=}\StringTok{"metals_NoHg_log10_PCA_scores.csv"}\NormalTok{, }\DataTypeTok{quote=}\NormalTok{F, }\DataTypeTok{row.names=}\NormalTok{F)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{##system("pwd")}
+\NormalTok{rmarkdown}\OperatorTok{::}\KeywordTok{render}\NormalTok{(}\StringTok{"yuma-metals-20210821.Rmd"}\NormalTok{, }\StringTok{'html_document'}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\end{document}

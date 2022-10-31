@@ -1,0 +1,188 @@
+---
+title: "Yuma_PCA_Analysis"
+author: "Jenna Honan"
+date: "6/29/2022"
+output: html_document
+---
+# An Analysis of PC1 and PC2 Compared to Yuma Health Outcomes
+
+Note: The following scripts must be run prior to completing this analysis: Data_Clean.Rmd, Yuma_Metals_Analysis.Rmd, Demographics.Rmd, yuma-metals-20210821.Rmd, and Exploration.Rmd. This will provide the accurate dataframes used in the following code.
+
+## Data Descriptions
+```{r desc}
+library(DataExplorer)
+library(ggplot2)
+library(ggpubr)
+library(gridExtra)
+#create_report(Metals) (Remove the # when you actually want to run - takes too much processing power otherwise.)
+```
+
+
+## Data Visualization - Exploratory
+
+### Concentrations by Date
+```{r envt_samples_by_collectiondate}
+library(dplyr)
+
+colnames(metals.robpca) <- c("ID", "Log10_Mn55", "Log10_Cu65", "Log10_Cd111", "Log10_Hg202", "Log10_Pb208", "Log10_U238", "Site", "PC1", "PC2", "PC3", "PC4", "PC5")
+
+Metals <- merge(Metals, metals.robpca, by = c("ID", "Site"), all=T)
+
+colnames(Metals)[colnames(Metals) %in% c("Log10_Mn55.x", "Log10_Cu65.x", "Log10_Cd111.x", "Log10_Hg202.x", "Log10_Pb208.x", "Log10_U238.x", "PC1.x", "PC2.x", "PC3.x", "PC4.x", "PC5.x")] <- c("Log10_Mn55", "Log10_Cu65", "Log10_Cd111", "Log10_Hg202", "Log10_Pb208", "Log10_U238", "PC1", "PC2", "PC3", "PC4", "PC5")
+
+Metals <- Metals[ , !names(Metals) %in% c("Log10_Mn55.y", "Log10_Cu65.y", "Log10_Cd111.y", "Log10_Hg202.y", "Log10_Pb208.y", "Log10_U238.y", "PC1.y", "PC2.y", "PC3.y", "PC4.y", "PC5.y")]
+
+ 
+ggplot(Metals, aes(y=PC1, x=Date, color=as.factor(Site)))+
+  geom_point()+
+  geom_smooth(se=F)+
+  scale_color_discrete("Site", labels=c("1"="CSF", "2"="RCBH", "3"="YRMC"))+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.text.x=element_text(angle=60, hjust=1),
+        axis.line = element_line(color="#000000"))+
+  scale_x_date(date_breaks = "1 month", date_labels =  "%b")+
+  ylab("PC1")+
+  xlab("Date of Sample Collection")
+
+ggplot(Metals, aes(y=PC2, x=Date, color=as.factor(Site)))+
+  geom_point()+
+  geom_smooth(se=F)+
+  scale_color_discrete("Site", labels=c("1"="CSF", "2"="RCBH", "3"="YRMC"))+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.text.x=element_text(angle=60, hjust=1),
+        axis.line = element_line(color="#000000"))+
+  scale_x_date(date_breaks = "1 month", date_labels =  "%b")+
+  ylab("PC2")+
+  xlab("Date of Sample Collection")
+
+#Relevant paper: https://www.sciencedirect.com/science/article/pii/S1878535212000263 
+```
+
+### Tables and Observations for Each Metal
+```{r observations_envt_samples}
+
+library(dplyr)
+
+Metals %>% 
+  group_by(Site) %>% 
+  summarize(number_NAs_PC1=sum(is.na(PC1)),
+            number_NAs_PC2=sum(is.na(PC2)))
+
+#Not sure why I made this:
+#Making a table re: PC values
+#library(EnvStats)
+#knitr::kable(Metals %>%
+#               group_by(Site) %>% 
+#               summarize(n_PC1=sum(!is.na(PC1)),
+#                         geomean_PC1=round(exp(mean(PC1, na.rm = T)), digits = 2),
+#                         geosd_PC1=round(exp(sd(PC1, na.rm = T)), digits = 2),
+#                         n_PC2=sum(!is.na(PC2)),
+#                         geomean_PC2=round(exp(mean(PC2, na.rm = T)), digits = 2),
+#                         geosd_PC2=round(exp(sd(PC2, na.rm = T)), digits = 2)))
+
+#create_report(data.melt) (Only run if you need to.)
+```
+
+### Distribution of PCA Data
+```{r metal_distributions}
+hist(Metals$PC1)
+
+hist(Metals$PC2)
+```
+
+### Plotting Hormone Levels Against Metal Concentrations
+```{r metals_hormones}
+#Cortisol against PCA results
+PC1_Cortisol <- ggplot(Metals, aes(x=PC1, y=Cortisol))+geom_point()
+PC2_Cortisol <- ggplot(Metals, aes(x=PC2, y=Cortisol))+geom_point()
+
+grid.arrange(PC1_Cortisol, PC2_Cortisol)
+```
+
+### PCA by Gender
+```{r PCA_Demo}
+library(ggpubr)
+
+Gender_PC1 <- ggplot(Metals, aes(y=PC1, x=as.factor(Gender), fill=as.factor(Gender)))+
+  geom_boxplot()+
+  theme(legend.position = "none",
+        panel.background = element_rect(fill="#ffffff"),
+        axis.text.x=element_text(angle=60, hjust=1),
+        axis.line = element_line(color="#000000"))+
+  ylab("PC1")+
+  xlab("")
+
+Gender_PC2 <- ggplot(Metals, aes(y=PC2, x=as.factor(Gender), fill=as.factor(Gender)))+
+  geom_boxplot()+
+  scale_fill_discrete("Gender", labels=c("1"="Male", "2"="Female"))+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.text.x=element_text(angle=60, hjust=1),
+        axis.line = element_line(color="#000000"))+
+  ylab("PC2")+
+  xlab("")
+
+ggarrange(Gender_PC1, Gender_PC2)
+```
+
+### PCA by BMI
+```{r PCA_Demo}
+a <- ggplot(Metals, aes(x=PC1, y=log(bmi)))+
+  geom_point(aes(color=as.factor(Gender)))+
+  geom_smooth(method=lm, se=F)+
+  theme(legend.position = "none",
+        panel.background = element_rect(fill="#ffffff"),
+        axis.text.x=element_text(angle=60, hjust=1),
+        axis.line = element_line(color="#000000"))+
+  xlab("PC1")+
+  ylab("Logtransformed BMI (Measured)")
+
+b <- ggplot(Metals, aes(x=PC2, y=log(bmi)))+
+  geom_point(aes(color=as.factor(Gender)))+
+  geom_smooth(method=lm, se=F)+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.text.x=element_text(angle=60, hjust=1),
+        axis.line = element_line(color="#000000"))+
+  scale_color_discrete(name="Gender", labels=c("Male", "Female", NA))+
+  labs(Color='Gender')+
+  xlab("PC2")+
+  ylab("Logtransformed BMI (Measured)")
+
+ggarrange(a, b)
+```
+
+
+### Analysis of Measured BMI against Individual Metals
+```{r measured_bmi_metals}
+
+Mn55_BMI_measured <- Metals[,c("ID", "Site", "Gender", "bmi", "age", "Log10_Mn55")]
+Cu65_BMI_measured <- Metals[,c("ID", "Site", "Gender", "bmi", "age", "Log10_Cu65")]
+Cd111_BMI_measured <- Metals[,c("ID", "Site", "Gender", "bmi", "age", "Log10_Cd111")]
+Hg202_BMI_measured <- Metals[,c("ID", "Site", "Gender", "bmi", "age", "Log10_Hg202")]
+Pb208_BMI_measured <- Metals[,c("ID", "Site", "Gender", "bmi", "age", "Log10_Pb208")]
+U238_BMI_measured <- Metals[,c("ID", "Site", "Gender", "bmi", "age", "Log10_U238")]
+
+colnames(Mn55_BMI_measured) <- c("ID", "Site", "Gender", "bmi", "age", "Log_Concentration")
+Mn55_BMI_measured$Metal <- rep(c("Mn55"), length(Mn55_BMI_measured))
+colnames(Cu65_BMI_measured) <- c("ID", "Site", "Gender", "bmi", "age", "Log_Concentration")
+Cu65_BMI_measured$Metal <- rep(c("Cu65"), length(Cu65_BMI_measured))
+colnames(Cd111_BMI_measured) <- c("ID", "Site", "Gender", "bmi", "age", "Log_Concentration")
+Cd111_BMI_measured$Metal <- rep(c("Cd111"), length(Cd111_BMI_measured))
+colnames(Hg202_BMI_measured) <- c("ID", "Site", "Gender", "bmi", "age", "Log_Concentration")
+Hg202_BMI_measured$Metal <- rep(c("Hg202"), length(Hg202_BMI_measured))
+colnames(Pb208_BMI_measured) <- c("ID", "Site", "Gender", "bmi", "age", "Log_Concentration")
+Pb208_BMI_measured$Metal <- rep(c("Pb208"), length(Pb208_BMI_measured))
+colnames(U238_BMI_measured) <- c("ID", "Site", "Gender", "bmi", "age", "Log_Concentration")
+U238_BMI_measured$Metal <- rep(c("U238"), length(U238_BMI_measured))
+
+Metals_BMI_measured <- rbind(Mn55_BMI_measured, Cu65_BMI_measured, Cd111_BMI_measured, Hg202_BMI_measured, Pb208_BMI_measured, U238_BMI_measured)
+
+ggplot(Metals_BMI_measured, aes(x=Log_Concentration, y=log(bmi), color=Metal))+
+  geom_point()+
+  geom_smooth(method=lm, se=F)+
+  theme(legend.position = "none",
+        panel.background = element_rect(fill="#ffffff"),
+        axis.text.x=element_text(angle=60, hjust=1),
+        axis.line = element_line(color="#000000"))+
+  xlab("Logtransformed Concentration (units)")+
+  ylab("Logtransformed BMI -Measured (kg/m2)")
+```
