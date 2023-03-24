@@ -1,5 +1,5 @@
 # GitHub Title: Yuma_Metals
-Data and analysis pertaining to Yuma project (dissteration)
+Data and analysis pertaining to Yuma project (dissertation)
 
 
 ## Research Dissertation Title: EVALUATING COMMUNITY-GENERATED CONCERNS REGARDING ENVIRONMENTAL CONTAMINANTS IN YUMA COUNTY, ARIZONA USING BIOSTATISTICAL MODELING AND EPIDEMIOLOGY 
