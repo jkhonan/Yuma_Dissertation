@@ -13,7 +13,7 @@ Yuma, AZ.  Also, use Rmd file to illustrate use of R and markdown for
 computationally reproducible research.
 
 ### Changes since 2021-08-21
-1. Values missing all metals are true missing -- insuffucent sample.
+1. Values missing all metals are true missing -- insufficient sample.
 2. Values with missing Hg are also true missing (about 89 of these)
 - fit PCA excluding missing Hg
 - 2nd fit using imputed Hg from other metals data.
@@ -45,13 +45,13 @@ library(tidyverse)
 library(ggplot2)
 
 #setwd
-setwd("~/Desktop/Research/Yuma/Yuma - R Project/")
+setwd("~/Desktop/Yuma Project/Yuma - R Project/")
 
 ## read data
 ##filename <- c("Yuma Metals Project - EMR 19Jun20.xlsx")
 filename <- c("Yuma Metals Project_EMR_Editted 23Aug2021 mental health & ID removed.xlsx") ## new data set
 tmp <- read_excel(filename, sheet=3)
-dim(tmp) ## 330 222 ## same dimensions
+dim(tmp) ## 330 222 ##New data set has dim 330, 199 (after removal of identifiers and mental health data) #Also Pb208 is already the only one that is left of the lead columns
  names(tmp)
  ##  [1] "ID"                        "Mn55"                     
  ##  [3] "Cu65"                      "Cd111"                    
@@ -97,7 +97,7 @@ The figure below shows metals concentrations on log10 scale.  NA values are
 omitted.
 
 The shape of the Pb distributions are nearly identical (omitted 206 and 207). On the whole, these
-distributions are not as bad as I feared.  All are stil right-skewed after
+distributions are not as bad as I feared.  All are still right-skewed after
 transformation, but they do not look pathologic.
 
 ```{r, intitialPlots, fig.cap="Metals concentrations - log10 scale"}
@@ -118,7 +118,8 @@ based on site and other observed metals
 
 
 
-*Note* - Other BDL values are replaced with 1/2 the limit of detection.
+*Note* - Other BDL values are replaced with the limit of detection/sqrt(2).
+
 
 ```{r, omitmissing}
 names(metals)
@@ -146,8 +147,11 @@ round(cor(metals.complete.log10[,2:7]), 2)
 metals.impute.log10 <- cbind(ID=metals.impute.Hg[,"ID"],
                                log10(metals.impute.Hg[,2:7]),
                                Site=metals.impute.Hg[,"Site"])
+
 summary(metals.impute.log10)
 metals.impute.Hg
+
+
 
 ### fit regression line for Hg
 Hg.lm <- lm(Hg202 ~ as.factor(Site) + Mn55 + Cu65 + Cd111 + Pb208 + U238,
@@ -164,7 +168,7 @@ summary(metals.fillin.log10)
 
 ## combine complete cases with Hg imputed cases
 metals.allobs.log10 <- rbind(metals.complete.log10, metals.fillin.log10)
-## dim(metals.allobs.log10) ## 206 8  ## OK obs with missing Cu65 is omitted.
+##dim(metals.allobs.log10) ## 206 8  ## OK obs with missing Cu65 is omitted.
 ## dim(metals.obs) ## 207 8
 
 ## check summary
@@ -302,5 +306,5 @@ write.csv(metals.noHg.robpca, file="metals_NoHg_log10_PCA_scores.csv", quote=F, 
 
 ```{r, render, eval=F}
 ##system("pwd")
-rmarkdown::render("yuma-metals-20210821.Rmd", 'html_document')
+#rmarkdown::render("yuma-metals-20210821.Rmd", 'html_document') #Unhashtag this when you're ready to render.
 ```

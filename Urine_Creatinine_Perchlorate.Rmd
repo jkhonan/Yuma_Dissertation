@@ -5,75 +5,118 @@ date: "9/5/2022"
 output: html_document
 ---
 
-```{r setup}
-library(readxl)
-Creatinine <- read_excel("~/Desktop/Research/Yuma/Yuma - R Project/2021-0072_Urinary Creatinine Results.xlsx", skip=6)
-Perchlorate <- read_excel("~/Desktop/Research/Yuma/Yuma - R Project/2021-0072_Urinary Perchlorate Report.xlsx", skip=7)
-
-#Light cleaning
-Creatinine$`Sample ID` <- gsub("YRMC-", "Y1", Creatinine$`Sample ID`)
-Perchlorate$`Sample ID` <- gsub("YRMC-", "Y1", Perchlorate$`Sample ID`)
-```
-
 ## Merging Datasets for Analysis
 ```{r merge}
-Urine_Perch_Creat <- merge(Creatinine, Perchlorate, by=c("Sample ID"), all = T)
-Urine_Perch_Creat <- as.data.frame(Urine_Perch_Creat)
-Urine_Perch_Creat <- Urine_Perch_Creat[, c("Sample ID", "Result.x", "LOD.x", "Result.y", "LOD.y")]
-unique(Creatinine$Units)
-unique(Perchlorate$Units)
-colnames(Urine_Perch_Creat) <- c("Sample_ID", "Result_C_mg_dL", "LOD_C", "Result_P_ng_mL", "LOD_P")
-
-Urine_Perch_Creat$Result_C[Urine_Perch_Creat$Result_C=="NR"] <- NA
-
-#Of the 297 observations, 2 have missing values for both creatinine and perchlorate, and 1 has missing value for creatinine but measured values for perchlorate, such that 294 obersvations are paired with measured values.
 
 library(dplyr)
 library(knitr)
-kable(Urine_Perch_Creat %>% 
+kable(All_Data %>% 
   filter(!is.na(Result_C_mg_dL)) %>% 
   summarise("n Creatinine < LOD"=sum(Result_C_mg_dL<LOD_C, na.rm = T),
             "n Perchlorate < LOD"=sum(Result_P_ng_mL<LOD_P, na.rm = T)))
 #Rows with missing data for either creatinine or perchorate have been removed from the dataset (DF=99%). No replacement needed - all detected values above LOD.
+
+All_Data %>% 
+  filter(!is.na(Result_P_ng_mL)) %>% 
+  summarize("Number Part. with Perchlorate"=length(unique(Sample_ID)))
+
+All_Data %>% 
+  filter(!is.na(Result_C_mg_dL)) %>% 
+  summarize("Number Part. with Creatinine"=length(unique(Sample_ID)))
+
+All_Data %>% 
+  filter(!is.na(fT3)|!is.na(TSH)|!is.na(fT4)|!is.na(TotalT4)|!is.na(TotalT3)) %>% 
+  summarize("Number Part. with Hormones"=length(unique(ID)))
 ```
 
 ## Checking Distributions
 ```{r distributions}
-hist(as.numeric(Urine_Perch_Creat$Result_C_mg_dL), xlab = "Creatinine (mg/dL)", main = "Distribution of Creatinine Levels")
-hist(as.numeric(Urine_Perch_Creat$Result_P_ng_mL), xlab = "Perchlorate (ng/mL)", main = "Distribution of Perchlorate Levels")
+All_Data$Result_C_mg_dL <- as.numeric(All_Data$Result_C_mg_dL)
+All_Data$Result_P_ng_mL <- as.numeric(All_Data$Result_P_ng_mL)
 
-hist(log(as.numeric(Urine_Perch_Creat$Result_C_mg_dL)), xlab = "ln Creatinine (mg/dL)", main = "Distribution of Creatinine Levels After Log Transformation")
-hist(log(as.numeric(Urine_Perch_Creat$Result_P_ng_mL)), xlab = "ln Perchlorate (ng/mL)", main = "Distribution of Perchlorate Levels After Log Transformation")
+hist(All_Data$Result_C_mg_dL, xlab = "Creatinine (mg/dL)", main = "Distribution of Creatinine Levels")
+hist(All_Data$Result_P_ng_mL, xlab = "Perchlorate (ng/mL)", main = "Distribution of Perchlorate Levels")
+
+hist(log(All_Data$Result_C_mg_dL), xlab = "ln Creatinine (mg/dL)", main = "Distribution of Creatinine Levels After Log Transformation")
+hist(log(All_Data$Result_P_ng_mL), xlab = "ln Perchlorate (ng/mL)", main = "Distribution of Perchlorate Levels After Log Transformation")
+
+All_Data$Result_C_ng_mL <- All_Data$Result_C_mg_dL*10000
+hist((log(All_Data$Result_P_ng_mL)/log(All_Data$Result_C_ng_mL)), xlab = "ln Perchlorate (ng/mL) per ln Creatinine (ng/mL)", main = "Distribution of Perchlorate Levels Standardized by Creatinine 
+     and After Log Transformation")
+```
+### Hormone Levels
+```{r hormones, warning=F}
+#Looking at total levels first before free 
+library(gridExtra)
+library(ggplot2)
+library(reshape)
+TSH <- ggplot(All_Data) +geom_boxplot(aes(y=TSH)) +theme(axis.ticks.x = element_blank(),axis.text.x = element_blank()) +theme_classic() +ylab("TSH (units)")
+T3 <- ggplot(All_Data) +geom_boxplot(aes(y=TotalT3)) +theme(axis.ticks.x = element_blank(),axis.text.x = element_blank()) +theme_classic() +ylab("Total T3 (units)")
+T4 <- ggplot(All_Data) +geom_boxplot(aes(y=TotalT4)) +theme(axis.ticks.x = element_blank(),axis.text.x = element_blank()) +theme_classic() +ylab("Total T4 (units)")
+Cortisol <- ggplot(All_Data) +geom_boxplot(aes(y=Cortisol)) +theme(axis.ticks.x = element_blank(),axis.text.x = element_blank()) +theme_classic() +ylab("Cortisol (units)")
+
+grid.arrange(TSH, Cortisol, T3, T4)
+
+#Looking at distributions
+#TSH: uIU/mL
+#fT4: pg/mL
+#Total T4: ng/mL
+#fT3: pg/mL
+#Total T3: ng/mL
+#Cortisol: ng/mL
+
+hist(All_Data$TSH, main="TSH Distribution", xlab = "TSH (mIU/mL)")
+hist(All_Data$TotalT3, main="Total T3 Distribution", xlab = "Total T3 (ng/mL)")
+hist(All_Data$fT3, main="Free T3 Distribution", xlab = "Free T3 (pg/mL)")
+hist(All_Data$TotalT4, main="Total T4 Distribution", xlab = "Total T4 (ng/mL)")
+hist(All_Data$fT4, main="Free T4 Distribution", xlab = "Free T4 (pg/mL)")
+hist(All_Data$Cortisol, main="Cortisol Distribution", xlab = "Cortisol (ng/mL)")
+
+#Levels by date
+data.melt2 <- melt(All_Data,id.vars=c('ID','Date'), measure.vars=c('TSH','TotalT3','TotalT4', 'Cortisol'))
+
+ggplot(data.melt2, aes(y=value, x=Date, color=variable))+
+  geom_point()+
+  geom_smooth(se=F)+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.text.x=element_text(angle=60, hjust=1),
+        axis.line = element_line(color="#000000"))+
+  scale_x_date(date_breaks = "1 month", date_labels =  "%b")+
+  ylab("Hormone Levels")+
+  xlab("Date of Sample Collection")+
+  labs(color='Hormones')
+
+#create_report(data.melt2) Only do when necessary
 ```
 
 ## Analyzing Correlation of Creatinine and Perchlorate
 ```{r correlation}
 library(ggplot2)
-Urine_Perch_Creat$Site <- substr(as.character(Urine_Perch_Creat$Sample_ID),7,7)
 
-ggplot(Urine_Perch_Creat, aes(x=as.numeric(Result_C_mg_dL), y=as.numeric(Result_P_ng_mL)))+
+
+ggplot(All_Data, aes(x=as.numeric(Result_C_mg_dL), y=as.numeric(Result_P_ng_mL)))+
   geom_point()+
   geom_smooth(method=lm, se=F)+
   xlab("Creatinine (mg/dL)")+
   ylab("Perchlorate (ng/mL)")+
   ggtitle("Correlation of Perchlorate and Creatinine")
 
-ggplot(Urine_Perch_Creat, aes(x=log(as.numeric(Result_C_mg_dL)), y=log(as.numeric(Result_P_ng_mL))))+
-  geom_point(aes(color=Site))+
-  scale_color_discrete("Site", labels=c("C"="CSF", "R"="RCBH", "Y"="YRMC"))+
+ggplot(All_Data, aes(x=log(Result_C_mg_dL), y=log(Result_P_ng_mL)))+
+  geom_point(aes(color=as.factor(Site)))+
+  scale_color_discrete("Site", labels=c("1"="CSF", "2"="RCBH", "3"="YRMC"))+
   geom_smooth(method=lm, se=F)+
   xlab("ln Creatinine (mg/dL)")+
   ylab("ln Perchlorate (ng/mL)")+
   ggtitle("Correlation of Perchlorate and Creatinine")+
   theme(text = element_text(size = 20))
 
-cor.test(log(as.numeric(Urine_Perch_Creat$Result_C_mg_dL)), log(as.numeric(Urine_Perch_Creat$Result_P_ng_mL)))
+cor.test(log(All_Data$Result_C_mg_dL), log(All_Data$Result_P_ng_mL))
 ```
 
 ### Checking for Grouping by Site
 ```{r corr_site}
 
-ggplot(Urine_Perch_Creat, aes(x=log(as.numeric(Result_C_mg_dL)), y=log(as.numeric(Result_P_ng_mL)), color=as.factor(Site)))+
+ggplot(All_Data, aes(x=log(Result_C_mg_dL), y=log(Result_P_ng_mL), color=as.factor(Site)))+
   geom_point()+
   geom_smooth(method=lm, se=F)+
   scale_color_discrete("Site", labels=c("C"="CSF", "R"="RCBH", "Y"="YRMC"))+
@@ -81,7 +124,7 @@ ggplot(Urine_Perch_Creat, aes(x=log(as.numeric(Result_C_mg_dL)), y=log(as.numeri
   ylab("ln Perchlorate (ng/mL)")+
   ggtitle("Correlation of Perchlorate and Creatinine After Log Transformations by Location")
 
-kable(Urine_Perch_Creat %>% 
+kable(All_Data %>% 
         summarise("CSF"=sum(Site=="C"),
                   "RCBH"=sum(Site=="R"),
                   "YRMC"=sum(Site=="Y"),
@@ -92,13 +135,13 @@ kable(Urine_Perch_Creat %>%
 ```{r corr_sex}
 library(dplyr)
 
-ID_Gender <- Metals[, c("ID", "Gender")]
-Urine_Perch_Creat$ID <- substr(as.character(Urine_Perch_Creat$Sample_ID),7,11)
+ID_Gender <- All_Data[, c("ID", "Gender")]
+All_Data$ID <- substr(as.character(All_Data$Sample_ID),7,11)
 
-df1 <- merge(ID_Gender, Urine_Perch_Creat, by="ID")
+df1 <- merge(ID_Gender, All_Data, by="ID")
 df1 <- as.data.frame(df1)
 
-ggplot(subset(df1, !is.na(df1$Gender)), aes(x=log(as.numeric(Result_C_mg_dL)), y=log(as.numeric(Result_P_ng_mL)), color=as.factor(Gender)))+
+ggplot(subset(df1, !is.na(df1$Gender.x)), aes(x=log(Result_C_mg_dL), y=log(Result_P_ng_mL), color=as.factor(Gender.x)))+
   geom_point()+
   geom_smooth(method=lm, se=F)+
   scale_color_discrete("Gender", labels=c("1"="Male", "2"="Female"))+
@@ -107,21 +150,21 @@ ggplot(subset(df1, !is.na(df1$Gender)), aes(x=log(as.numeric(Result_C_mg_dL)), y
   ggtitle("Correlation of Perchlorate and Creatinine After Log Transformations by Sex")  
 
 kable(df1 %>% 
-        summarise("Males"=sum(Gender==1, na.rm=T),
-                  "Females"=sum(Gender==2, na.rm=T),
-                  "NA"=sum(is.na(Gender))))
+        summarise("Males"=sum(Gender.x==1, na.rm=T),
+                  "Females"=sum(Gender.x==2, na.rm=T),
+                  "NA"=sum(is.na(Gender.x))))
 ```
 
 ### Correlating BMI and Creatinine Levels
 ```{r corr_bmi}
 library(dplyr)
 
-ID_BMI <- Metals[, c("ID", "bmi")]
+ID_BMI <- All_Data[, c("ID", "bmi")]
 
 df2 <- merge(ID_BMI, Urine_Perch_Creat, by="ID")
 df2 <- as.data.frame(df2)
 
-ggplot(df2, aes(x=as.numeric(bmi), y=log(as.numeric(Result_C_mg_dL))))+
+ggplot(df2, aes(x=as.numeric(bmi), y=log(as.numeric(Result_P_ng_mL))))+
   geom_point()+
   geom_smooth(method=lm, se=F)+
   xlab("BMI")+
@@ -132,22 +175,23 @@ ggplot(df2, aes(x=as.numeric(bmi), y=log(as.numeric(Result_C_mg_dL))))+
 
 ### Comparing our population's perchlorate levels to national averages
 ```{r ave_perch_population}
-Urine_Perch_Creat$Result_P_ng_mL <- as.numeric(Urine_Perch_Creat$Result_P_ng_mL)
 
-max(Urine_Perch_Creat$Result_P_ng_mL, na.rm = T)
-mean(Urine_Perch_Creat$Result_P_ng_mL, na.rm = T)
+max(All_Data$Result_P_ng_mL, na.rm = T)
+mean(All_Data$Result_P_ng_mL, na.rm = T)
 
 
 
 library(haven)
-NHANES_Perch <- read_xpt("~/Desktop/Research/Yuma/Yuma - R Project/PERNT_J.XPT")
+NHANES_Perch <- read_xpt("~/Desktop/Yuma Project/Yuma - R Project/PERNT_J.XPT")
 
 mean(NHANES_Perch$URXUP8, na.rm = T)
 exp(mean(log(NHANES_Perch$URXUP8), na.rm = T)) #To compare to the summary table.
 
-#tiff("Perchlorate_Graph.tiff", units="in", width=8, height=5, res=300) Only to save
-ggplot(Urine_Perch_Creat)+
-  geom_point(aes(x=Sample_ID, y=Result_P_ng_mL, shape=Site, color=Site), size=2)+
+#tiff("Perchlorate_Graph.tiff", units="in", width=8, height=5, res=300) #Only to save in high def.
+
+#Can look up here how to add horizontal label to legend, then edit:
+ggplot(All_Data)+
+  geom_point(aes(x=Sample_ID, y=Result_P_ng_mL, shape=as.factor(Site), color=as.factor(Site)), size=2)+
   scale_shape_discrete(labels=c("C"="CSF", "R"="RCBH", "Y"="YRMC"))+
   scale_color_discrete(labels=c("C"="CSF", "R"="RCBH", "Y"="YRMC"))+
   geom_hline(yintercept=c(3.848915, 3.095675), color=c("red", "firebrick"), linetype=c("solid", "dashed"))+ 
@@ -158,27 +202,243 @@ ggplot(Urine_Perch_Creat)+
         axis.text.x = element_blank(),
         panel.background = element_rect(fill = '#ffffff', color = 'black'),
         text = element_text(size=15))
-#dev.off() Only to save
+#dev.off() #Only remove hashtag to save in high def.
+
+All_Data %>% 
+  filter(Site=="C") %>% 
+  summarise(n=length(Site),
+            CSF_Percent_Above=sum(Result_P_ng_mL>3.848915, na.rm=T))
+
+All_Data %>% 
+  filter(Site=="Y") %>% 
+  summarise(n=length(Site),
+            YRMC_Percent_Above=sum(Result_P_ng_mL>3.848915, na.rm=T))
+
+All_Data %>% 
+  filter(Site=="R") %>% 
+  summarise(n=length(Site),
+            RCBH_Percent_Above=sum(Result_P_ng_mL>3.848915, na.rm=T))
+
+
+
+
+
+All_Data %>% 
+  filter(Site=="C") %>% 
+  summarise(n=length(Site),
+            CSF_Percent_Above=sum(Result_P_ng_mL>3.095675, na.rm=T)/length(Site=="C"))
+
+All_Data %>% 
+  filter(Site=="Y") %>% 
+  summarise(n=length(Site),
+            YRMC_Percent_Above=sum(Result_P_ng_mL>3.095675, na.rm=T)/length(Site=="Y"))
+
+All_Data %>% 
+  filter(Site=="R") %>% 
+  summarise(n=length(Site),
+            RCBH_Percent_Above=sum(Result_P_ng_mL>3.095675, na.rm=T)/length(Site=="R"))
+
 ```
 
 ### Perchlorate against Measured BMI
 ```{r perch_bmi_measured}
-Urine_Perch_Creat$ID <- substr(as.character(Urine_Perch_Creat$Sample_ID),7,11)
 
-Perchlorate <- merge(Urine_Perch_Creat, Metals, by="ID", all=T)
-
-ggplot(Perchlorate, aes(x=Result_P_ng_mL, y=log(bmi)))+
+ggplot(All_Data, aes(x=log(Result_P_ng_mL)/log(Result_C_ng_mL), y=log(bmi)))+
   geom_point()+
   geom_smooth(method=lm, se=F)+
   theme(legend.position = "none",
         panel.background = element_rect(fill="#ffffff"),
         axis.text.x=element_text(angle=60, hjust=1),
         axis.line = element_line(color="#000000"))+
-  xlab("Perchlorate (units)")+
-  ylab("Logtransformed BMI -Measured (kg/m2)")
+  xlab("Perchlorate/Creatinine (ng/mL)")+
+  ylab("Logtransformed Measured BMI (kg/m2)")
 
 library(car)
-perch_bmi_creat <- lm(bmi~Result_P_ng_mL+Result_C_mg_dL, Perchlorate)
+perch_bmi_creat <- lm(log(bmi)~log(Result_P_ng_mL)+log(Result_C_mg_dL), All_Data)
 
 avPlots(perch_bmi_creat)
+```
+
+```{r logit}
+
+ggplot(data=All_Data, aes(x=log(Result_P_ng_mL), y=Gender))+
+  geom_smooth(method="loess", se=F)+
+  ggtitle("Perchlorate and Gender")+
+  xlab("Ln Perchlorate")+
+  ylab("Gender")
+
+ggplot(data=All_Data, aes(x=log(Result_P_ng_mL), y=Ethnicity))+
+  geom_smooth(method="loess", se=F)+
+  ggtitle("Perchlorate and Ethnicity")+
+  xlab("Ln Perchlorate")+
+  ylab("Ethnicity")
+
+ggplot(data=All_Data, aes(x=log(Result_P_ng_mL), y=Site))+
+  geom_smooth(method="loess", se=F)+
+  ggtitle("Perchlorate and Recruitment Site")+
+  xlab("Ln Perchlorate")+
+  ylab("Site")
+
+ggplot(data=All_Data, aes(x=log(Result_P_ng_mL), y=Water_home))+
+  geom_smooth(method="loess", se=F)+
+  ggtitle("Perchlorate and Home Water Source")+
+  xlab("Ln Perchlorate")+
+  ylab("Water Source")
+
+```
+```{r perch_outcomes}
+ggplot(data=All_Data, aes(x=log(Result_P_ng_mL)/log(Result_C_ng_mL), y=log(TSH)))+
+  geom_point()+
+  geom_smooth(method = lm)+
+  ggtitle("Perchlorate and TSH")+
+  xlab("Ln Perchlorate")+
+  ylab("Ln TSH")
+
+ggplot(data=All_Data, aes(x=log(Result_P_ng_mL)/log(Result_C_ng_mL), y=log(fT4)))+
+  geom_point()+
+  geom_smooth(method = lm)+
+  ggtitle("Perchlorate and fT4")+
+  xlab("Ln Perchlorate")+
+  ylab("Ln fT4")
+
+ggplot(data=All_Data, aes(x=log(Result_P_ng_mL)/log(Result_C_ng_mL), y=TotalT4))+
+  geom_point()+
+  geom_smooth(method = lm)+
+  ggtitle("Perchlorate and Total T4")+
+  xlab("Ln Perchlorate")+
+  ylab("Ln Total T4")
+
+ggplot(data=All_Data, aes(x=log(Result_P_ng_mL)/log(Result_C_ng_mL), y=log(fT3)))+
+  geom_point()+
+  geom_smooth(method = lm)+
+  ggtitle("Perchlorate and fT3")+
+  xlab("Ln Perchlorate")+
+  ylab("Ln fT3")
+
+ggplot(data=All_Data, aes(x=log(Result_P_ng_mL)/log(Result_C_ng_mL), y=TotalT3))+
+  geom_point()+
+  geom_smooth(method = lm)+
+  ggtitle("Perchlorate and Total T3")+
+  xlab("Ln Perchlorate")+
+  ylab("Ln Total T3")
+
+ggplot(data=All_Data, aes(y=log(Result_P_ng_mL)/log(Result_C_ng_mL), x=age))+
+  geom_point()+
+  geom_smooth(method = lm)+
+  ggtitle("Perchlorate and Age")+
+  xlab("Age")+
+  ylab("Ln Perchlorate")
+
+ggplot(data=All_Data, aes(y=log(Result_P_ng_mL)/log(Result_C_ng_mL), x=age))+
+  geom_point(aes(color=as.factor(Gender)))+
+  geom_smooth(method = lm, se=F, aes(color=as.factor(Gender)))+
+  ggtitle("Perchlorate and Age*Gender")+
+  xlab("Age")+
+  ylab("Ln Perchlorate")
+
+```
+
+```{r linear_models}
+ggplot(data=All_Data, aes(y=log(TSH), x=age))+
+  geom_point(aes(color=as.factor(Gender)))+
+  geom_smooth(method = lm, se = F, aes(color=as.factor(Gender)))+
+  ggtitle("TSH against Age by Gender")+
+  xlab("Age")+
+  ylab("Ln Perchlorate")
+
+ggplot(data=All_Data, aes(y=log(fT4), x=age))+
+  geom_point(aes(color=as.factor(Gender)))+
+  geom_smooth(method = lm, se = F, aes(color=as.factor(Gender)))+
+  ggtitle("Free T4 against Age by Gender")+
+  xlab("Age")+
+  ylab("Ln Perchlorate")
+
+ggplot(data=All_Data, aes(y=TotalT4, x=age))+
+  geom_point(aes(color=as.factor(Gender)))+
+  geom_smooth(method = lm, se = F, aes(color=as.factor(Gender)))+
+  ggtitle("Total T4 against Age by Gender")+
+  xlab("Age")+
+  ylab("Ln Perchlorate")
+
+ggplot(data=All_Data, aes(y=log(fT3), x=age))+
+  geom_point(aes(color=as.factor(Gender)))+
+  geom_smooth(method = lm, se = F, aes(color=as.factor(Gender)))+
+  ggtitle("Free T3 against Age by Gender")+
+  xlab("Age")+
+  ylab("Ln Perchlorate")
+
+ggplot(data=All_Data, aes(y=TotalT3, x=age))+
+  geom_point(aes(color=as.factor(Gender)))+
+  geom_smooth(method = lm, se = F, aes(color=as.factor(Gender)))+
+  ggtitle("Total T3 against Age by Gender")+
+  xlab("Age")+
+  ylab("Ln Perchlorate")
+
+ggplot(data=All_Data, aes(y=log(bmi), x=age))+
+  geom_point(aes(color=as.factor(Gender)))+
+  geom_smooth(method = lm, se = F, aes(color=as.factor(Gender)))+
+  ggtitle("BMI against Age by Gender")+
+  xlab("Age")+
+  ylab("Ln BMI")
+
+#MANOVA
+anova1 <- aov(log(TSH) ~ log(Result_P_ng_mL) + log(Result_C_mg_dL) + Gender + age + Site + any_thyroid_problem_dummy + Water_home + tsh_med, data=All_Data)
+summary(anova1)
+avPlots(anova1)
+
+anova2 <- aov(log(fT4) ~ log(Result_P_ng_mL) + log(Result_C_mg_dL) + Gender + age + Gender*age + Site + any_thyroid_problem_dummy + Water_home + free_t4_med, data=All_Data)
+summary(anova2)
+avPlots(anova2)
+
+anova3 <- aov(TotalT4 ~ log(Result_P_ng_mL) + log(Result_C_mg_dL) + Gender + age + Site + any_thyroid_problem_dummy + Water_home + total_t4_med, data=All_Data)
+summary(anova3)
+avPlots(anova3)
+
+anova4 <- aov(log(fT3) ~ log(Result_P_ng_mL) + log(Result_C_mg_dL) + Gender + age + Gender*age + Site + any_thyroid_problem_dummy + Water_home + free_t3_med, data=All_Data)
+summary(anova4)
+avPlots(anova4)
+
+anova5 <- aov(TotalT3 ~ log(Result_P_ng_mL) + log(Result_C_mg_dL) + Gender + age + Gender*age + Site + any_thyroid_problem_dummy + Water_home + total_t3_med, data=All_Data)
+summary(anova5)
+avPlots(anova5)
+
+anova6 <- aov(log(bmi) ~ log(Result_P_ng_mL) + log(Result_C_mg_dL) + Gender + age, data=All_Data)
+summary(anova6)
+avPlots(anova6)
+
+
+#Regressions - our assumptions are not met for linear regressions, though.
+#Linear
+model1 <- lm(log(TSH) ~ log(Result_P_ng_mL) + log(Result_C_mg_dL) + Site + thyroid_med + Gender + age, data = All_Data)
+summary(model1)
+avPlots(model1)
+
+model2 <- lm(log(fT4) ~ log(Result_P_ng_mL) + log(Result_C_mg_dL) + Site + thyroid_med + Gender, data = All_Data)
+summary(model2)
+avPlots(model2)
+
+#Logistic
+model3 <- glm(Hypo_D ~ log(Result_P_ng_mL) + log(Result_C_mg_dL) + Gender + age + Gender*age + Water_home, data=All_Data)
+summary(model3)
+
+model4 <- glm(emr_hypothyroidism ~ log(Result_P_ng_mL) + log(Result_C_mg_dL) + Gender + age + Gender*age + Water_home, data=All_Data)
+summary(model4)
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ```

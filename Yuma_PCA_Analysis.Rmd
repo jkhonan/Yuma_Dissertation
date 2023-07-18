@@ -24,6 +24,7 @@ library(gridExtra)
 ```{r envt_samples_by_collectiondate}
 library(dplyr)
 
+
 colnames(metals.robpca) <- c("ID", "Log10_Mn55", "Log10_Cu65", "Log10_Cd111", "Log10_Hg202", "Log10_Pb208", "Log10_U238", "Site", "PC1", "PC2", "PC3", "PC4", "PC5")
 
 Metals <- merge(Metals, metals.robpca, by = c("ID", "Site"), all=T)
@@ -32,6 +33,8 @@ colnames(Metals)[colnames(Metals) %in% c("Log10_Mn55.x", "Log10_Cu65.x", "Log10_
 
 Metals <- Metals[ , !names(Metals) %in% c("Log10_Mn55.y", "Log10_Cu65.y", "Log10_Cd111.y", "Log10_Hg202.y", "Log10_Pb208.y", "Log10_U238.y", "PC1.y", "PC2.y", "PC3.y", "PC4.y", "PC5.y")]
 
+Metals <- Metals %>%
+  filter(!is.na(DOB_year))
  
 ggplot(Metals, aes(y=PC1, x=Date, color=as.factor(Site)))+
   geom_point()+
@@ -99,6 +102,18 @@ PC2_Cortisol <- ggplot(Metals, aes(x=PC2, y=Cortisol))+geom_point()
 grid.arrange(PC1_Cortisol, PC2_Cortisol)
 ```
 
+### PCA Stuff from Dean
+
+Pb isotopes were removed because they were all heavily collinear. 
+Perhaps so much so that the isotopes were calculated based on one reference one.
+Kept Pb208.
+
+The classic vs. robust PCAs were different enough that Dean felt like keeping the robust version was worth it. Even after logging the data, they are still skewed.
+
+PC1 is all positively correlated, which shows that it is an analysis of overall exposure.
+
+PC2 shows which ones are correlated in the same +ve or -ve directions.
+
 ### PCA by Gender
 ```{r PCA_Demo}
 library(ggpubr)
@@ -122,22 +137,49 @@ Gender_PC2 <- ggplot(Metals, aes(y=PC2, x=as.factor(Gender), fill=as.factor(Gend
   xlab("")
 
 ggarrange(Gender_PC1, Gender_PC2)
+ggpubr::ggarrange(Gender_PC1,Gender_PC2,
+                  ncol = 2, nrow = 1,
+                  common.legend = T)
 ```
 
 ### PCA by BMI
 ```{r PCA_Demo}
-a <- ggplot(Metals, aes(x=PC1, y=log(bmi)))+
-  geom_point(aes(color=as.factor(Gender)))+
+aa <- ggplot(Metals, aes(x=PC1, y=log(bmi)))+
+  geom_point()+
   geom_smooth(method=lm, se=F)+
   theme(legend.position = "none",
         panel.background = element_rect(fill="#ffffff"),
         axis.text.x=element_text(angle=60, hjust=1),
         axis.line = element_line(color="#000000"))+
   xlab("PC1")+
-  ylab("Logtransformed BMI (Measured)")
+  ylab("Log BMI (Measured at Sampling Time)")
 
-b <- ggplot(Metals, aes(x=PC2, y=log(bmi)))+
-  geom_point(aes(color=as.factor(Gender)))+
+bb <- ggplot(Metals, aes(x=PC2, y=log(bmi)))+
+  geom_point()+
+  geom_smooth(method=lm, se=F)+
+  theme(legend.position = "none",
+        panel.background = element_rect(fill="#ffffff"),
+        axis.text.x=element_text(angle=60, hjust=1),
+        axis.line = element_line(color="#000000"))+
+  xlab("PC2")+
+  ylab("")
+
+ggpubr::ggarrange(aa,bb,
+                  ncol = 2, nrow = 1,
+                  common.legend = T)
+
+a <- ggplot(Metals, aes(x=PC1, y=log(bmi), color=as.factor(Gender)))+
+  geom_point()+
+  geom_smooth(method=lm, se=F)+
+  theme(legend.position = "none",
+        panel.background = element_rect(fill="#ffffff"),
+        axis.text.x=element_text(angle=60, hjust=1),
+        axis.line = element_line(color="#000000"))+
+  xlab("PC1")+
+  ylab("Log BMI (Height and Weight Measured at Sampling Time)")
+
+b <- ggplot(Metals, aes(x=PC2, y=log(bmi), color=as.factor(Gender)))+
+  geom_point()+
   geom_smooth(method=lm, se=F)+
   theme(panel.background = element_rect(fill="#ffffff"),
         axis.text.x=element_text(angle=60, hjust=1),
@@ -145,44 +187,239 @@ b <- ggplot(Metals, aes(x=PC2, y=log(bmi)))+
   scale_color_discrete(name="Gender", labels=c("Male", "Female", NA))+
   labs(Color='Gender')+
   xlab("PC2")+
-  ylab("Logtransformed BMI (Measured)")
+  ylab("")
 
-ggarrange(a, b)
+ggpubr::ggarrange(a,b,
+                  ncol = 2, nrow = 1,
+                  common.legend = T)
 ```
 
-
-### Analysis of Measured BMI against Individual Metals
-```{r measured_bmi_metals}
-
-Mn55_BMI_measured <- Metals[,c("ID", "Site", "Gender", "bmi", "age", "Log10_Mn55")]
-Cu65_BMI_measured <- Metals[,c("ID", "Site", "Gender", "bmi", "age", "Log10_Cu65")]
-Cd111_BMI_measured <- Metals[,c("ID", "Site", "Gender", "bmi", "age", "Log10_Cd111")]
-Hg202_BMI_measured <- Metals[,c("ID", "Site", "Gender", "bmi", "age", "Log10_Hg202")]
-Pb208_BMI_measured <- Metals[,c("ID", "Site", "Gender", "bmi", "age", "Log10_Pb208")]
-U238_BMI_measured <- Metals[,c("ID", "Site", "Gender", "bmi", "age", "Log10_U238")]
-
-colnames(Mn55_BMI_measured) <- c("ID", "Site", "Gender", "bmi", "age", "Log_Concentration")
-Mn55_BMI_measured$Metal <- rep(c("Mn55"), length(Mn55_BMI_measured))
-colnames(Cu65_BMI_measured) <- c("ID", "Site", "Gender", "bmi", "age", "Log_Concentration")
-Cu65_BMI_measured$Metal <- rep(c("Cu65"), length(Cu65_BMI_measured))
-colnames(Cd111_BMI_measured) <- c("ID", "Site", "Gender", "bmi", "age", "Log_Concentration")
-Cd111_BMI_measured$Metal <- rep(c("Cd111"), length(Cd111_BMI_measured))
-colnames(Hg202_BMI_measured) <- c("ID", "Site", "Gender", "bmi", "age", "Log_Concentration")
-Hg202_BMI_measured$Metal <- rep(c("Hg202"), length(Hg202_BMI_measured))
-colnames(Pb208_BMI_measured) <- c("ID", "Site", "Gender", "bmi", "age", "Log_Concentration")
-Pb208_BMI_measured$Metal <- rep(c("Pb208"), length(Pb208_BMI_measured))
-colnames(U238_BMI_measured) <- c("ID", "Site", "Gender", "bmi", "age", "Log_Concentration")
-U238_BMI_measured$Metal <- rep(c("U238"), length(U238_BMI_measured))
-
-Metals_BMI_measured <- rbind(Mn55_BMI_measured, Cu65_BMI_measured, Cd111_BMI_measured, Hg202_BMI_measured, Pb208_BMI_measured, U238_BMI_measured)
-
-ggplot(Metals_BMI_measured, aes(x=Log_Concentration, y=log(bmi), color=Metal))+
+### PCA by age
+```{r PCA_Demo}
+e <- ggplot(Metals, aes(y=PC1, x=age))+
   geom_point()+
   geom_smooth(method=lm, se=F)+
   theme(legend.position = "none",
         panel.background = element_rect(fill="#ffffff"),
         axis.text.x=element_text(angle=60, hjust=1),
         axis.line = element_line(color="#000000"))+
-  xlab("Logtransformed Concentration (units)")+
-  ylab("Logtransformed BMI -Measured (kg/m2)")
+  xlab("Age")+
+  ylab("PC1")
+
+f <- ggplot(Metals, aes(y=PC2, x=age))+
+  geom_point()+
+  geom_smooth(method=lm, se=F)+
+  theme(legend.position = "none",
+        panel.background = element_rect(fill="#ffffff"),
+        axis.text.x=element_text(angle=60, hjust=1),
+        axis.line = element_line(color="#000000"))+
+  xlab("Age")+
+  ylab("PC2")
+
+ggpubr::ggarrange(e,f,
+                  ncol = 2, nrow = 1,
+                  common.legend = T)
+
+c <- ggplot(Metals, aes(y=PC1, x=age, color=as.factor(Gender)))+
+  geom_point()+
+  geom_smooth(method=lm, se=F)+
+  theme(legend.position = "none",
+        panel.background = element_rect(fill="#ffffff"),
+        axis.text.x=element_text(angle=60, hjust=1),
+        axis.line = element_line(color="#000000"))+
+  xlab("Age")+
+  ylab("PC1")
+
+d <- ggplot(Metals, aes(y=PC2, x=age, color=as.factor(Gender)))+
+  geom_point()+
+  geom_smooth(method=lm, se=F)+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.text.x=element_text(angle=60, hjust=1),
+        axis.line = element_line(color="#000000"))+
+  scale_color_discrete(name="Gender", labels=c("Male", "Female", NA))+
+  labs(Color='Gender')+
+  xlab("Age")+
+  ylab("PC2")
+
+ggpubr::ggarrange(c,d,
+                  ncol = 2, nrow = 1,
+                  common.legend = T)
+```
+
+``` {r other_outcomes}
+g <- ggplot(Metals, aes(y=PC1, x=as.factor(Pesticides), fill=as.factor(Pesticides)))+
+         geom_boxplot()+
+  theme(legend.position = "none",
+        panel.background = element_rect(fill="#ffffff"),
+        axis.text.x=element_text(angle=60, hjust=1),
+        axis.line = element_line(color="#000000"))+
+  xlab("")+
+  ylab("PC1")
+
+h <- ggplot(Metals, aes(y=PC2, x=as.factor(Pesticides), fill=as.factor(Pesticides)))+
+         geom_boxplot()+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.text.x=element_text(angle=60, hjust=1),
+        axis.line = element_line(color="#000000"))+
+  xlab("")+
+  ylab("PC2")
+
+ggpubr::ggarrange(g,h,
+                  ncol = 2, nrow = 1,
+                  common.legend = T)
+
+i <- ggplot(Metals, aes(y=PC1, x=as.factor(Water_home), fill=as.factor(Water_home)))+
+         geom_boxplot()+
+  theme(legend.position = "none",
+        panel.background = element_rect(fill="#ffffff"),
+        axis.text.x=element_text(angle=60, hjust=1),
+        axis.line = element_line(color="#000000"))+
+  xlab("")+
+  ylab("PC1")
+
+j <- ggplot(Metals, aes(y=PC2, x=as.factor(Water_home), fill=as.factor(Water_home)))+
+         geom_boxplot()+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.text.x=element_text(angle=60, hjust=1),
+        axis.line = element_line(color="#000000"))+
+  xlab("")+
+  ylab("PC2")
+
+ggpubr::ggarrange(i,j,
+                  ncol = 2, nrow = 1,
+                  common.legend = T)
+
+k <- ggplot(subset(Metals, !is.na(Metals$Water_work)), aes(y=PC1, x=as.factor(Water_work), fill=as.factor(Water_work)))+
+         geom_boxplot()+
+  theme(legend.position = "none",
+        panel.background = element_rect(fill="#ffffff"),
+        axis.text.x=element_text(angle=60, hjust=1),
+        axis.line = element_line(color="#000000"))+
+  xlab("")+
+  ylab("PC1")
+
+l <- ggplot(subset(Metals, !is.na(Metals$Water_work)), aes(y=PC2, x=as.factor(Water_work), fill=as.factor(Water_work)))+
+         geom_boxplot()+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.text.x=element_text(angle=60, hjust=1),
+        axis.line = element_line(color="#000000"))+
+  xlab("")+
+  ylab("PC2")
+
+ggpubr::ggarrange(k,l,
+                  ncol = 2, nrow = 1,
+                  common.legend = T)
+
+m <- ggplot(Metals, aes(y=PC1, x=as.factor(Lived_in_Yuma), fill=as.factor(Lived_in_Yuma)))+
+         geom_boxplot()+
+  theme(legend.position = "none",
+        panel.background = element_rect(fill="#ffffff"),
+        axis.text.x=element_text(angle=60, hjust=1),
+        axis.line = element_line(color="#000000"))+
+  xlab("")+
+  ylab("PC1")
+
+n <- ggplot(Metals, aes(y=PC2, x=as.factor(Lived_in_Yuma), fill=as.factor(Lived_in_Yuma)))+
+         geom_boxplot()+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.text.x=element_text(angle=60, hjust=1),
+        axis.line = element_line(color="#000000"))+
+  xlab("")+
+  ylab("PC2")
+
+ggpubr::ggarrange(m,n,
+                  ncol = 2, nrow = 1,
+                  common.legend = T)
+
+o <- ggplot(subset(Metals, !is.na(Metals$Dental_health)), aes(y=PC1, x=as.factor(Dental_health), fill=as.factor(Dental_health)))+
+         geom_boxplot()+
+  theme(legend.position = "none",
+        panel.background = element_rect(fill="#ffffff"),
+        axis.text.x=element_text(angle=60, hjust=1),
+        axis.line = element_line(color="#000000"))+
+  xlab("")+
+  ylab("PC1")
+
+p <- ggplot(subset(Metals, !is.na(Metals$Dental_health)), aes(y=PC2, x=as.factor(Dental_health), fill=as.factor(Dental_health)))+
+         geom_boxplot()+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.text.x=element_text(angle=60, hjust=1),
+        axis.line = element_line(color="#000000"))+
+  xlab("")+
+  ylab("PC2")
+
+ggpubr::ggarrange(o,p,
+                  ncol = 2, nrow = 1,
+                  common.legend = T)
+
+q <- ggplot(subset(Metals, !is.na(Metals$arthritis)), aes(y=PC1, x=as.factor(arthritis), fill=as.factor(arthritis)))+
+         geom_boxplot()+
+  theme(legend.position = "none",
+        panel.background = element_rect(fill="#ffffff"),
+        axis.text.x=element_text(angle=60, hjust=1),
+        axis.line = element_line(color="#000000"))+
+  xlab("")+
+  ylab("PC1")
+
+r <- ggplot(subset(Metals, !is.na(Metals$arthritis)), aes(y=PC2, x=as.factor(arthritis), fill=as.factor(arthritis)))+
+         geom_boxplot()+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.text.x=element_text(angle=60, hjust=1),
+        axis.line = element_line(color="#000000"))+
+  xlab("")+
+  ylab("PC2")
+
+ggpubr::ggarrange(q,r,
+                  ncol = 2, nrow = 1,
+                  common.legend = T)
+
+s <- ggplot(subset(Metals, !is.na(Metals$gout)), aes(y=PC1, x=as.factor(gout), fill=as.factor(gout)))+
+         geom_boxplot()+
+  theme(legend.position = "none",
+        panel.background = element_rect(fill="#ffffff"),
+        axis.text.x=element_text(angle=60, hjust=1),
+        axis.line = element_line(color="#000000"))+
+  xlab("")+
+  ylab("PC1")
+
+t <- ggplot(subset(Metals, !is.na(Metals$gout)), aes(y=PC2, x=as.factor(gout), fill=as.factor(gout)))+
+         geom_boxplot()+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.text.x=element_text(angle=60, hjust=1),
+        axis.line = element_line(color="#000000"))+
+  xlab("")+
+  ylab("PC2")
+
+ggpubr::ggarrange(s,t,
+                  ncol = 2, nrow = 1,
+                  common.legend = T)
+
+
+library(tidyverse)
+library(ggpubr)
+
+
+
+u <- ggplot(subset(Metals, !is.na(Metals$chf)), aes(y=PC1, x=as.factor(chf), fill=as.factor(chf)))+
+         geom_boxplot()+
+  theme(legend.position = "none",
+        panel.background = element_rect(fill="#ffffff"),
+        axis.text.x=element_text(angle=60, hjust=1),
+        axis.line = element_line(color="#000000"))+
+  xlab("")+
+  ylab("PC1")
+
+v <- ggplot(subset(Metals, !is.na(Metals$chf)), aes(y=PC2, x=as.factor(chf), fill=as.factor(chf)))+
+         geom_boxplot()+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.text.x=element_text(angle=60, hjust=1),
+        axis.line = element_line(color="#000000"))+
+  xlab("")+
+  ylab("PC2")
+
+ggpubr::ggarrange(u, v,
+                  ncol = 2, nrow = 1,
+                  common.legend = T)
+
+
 ```

@@ -8,29 +8,48 @@ output: html_document
 This project will consider the associations between concentration levels of metals and 
 metalloids measured in hair samples of 330 Yuma County residents in 2018 and the prevalence of negative health outcomes, including endocrine disruption, reproductive disorders, obesity, and neurological disorders.
 
-Note: Before running this code, Data_Clean.Rmd should be run to clean the dataset used in this analysis.
+Note: Before running this code, Data_Clean.Rmd should be run to clean the dataset used in this analysis, and Dean Billheimer's yuma-metals-20210821.Rmd should also be run for Hg imputation values.
+
+
+## Merging datasets from imputed data and "All_Data"
+```{r mergess}
+colnames(metals.allobs.log10) <- c("ID","Log_Mn55","Log_Cu65","Log_Cd111","Log_Hg202_Imp","Log_Pb208","Log_U238","Site_Extra")
+Metals <- merge(All_Data, metals.allobs.log10, by="ID")
+Metals <- subset(Metals, select = -c(Site_Extra))
+colnames(Metals)[colnames(Metals) == 'PB208'] <- 'Pb208'
+```
 
 ## Data Descriptions
 ```{r desc}
 library(DataExplorer)
-#create_report(Metals) (Remove the # when you actually want to run - takes too much processing power otherwise.)
-```
+library(reshape2)
+library(dplyr)
+library(EnvStats)
+#create_report(Metals) #(Remove the # when you actually want to run - takes too much processing power otherwise.)
 
+data.melt <- melt(Metals,id.vars=c('ID','Date'), measure.vars=c('Mn55','Cu65','Cd111', 'Hg202', 'Pb208', 'U238', 'As75', 'Fe57'))
+
+data.melt %>%
+  filter(value>0) %>% 
+  group_by(variable) %>%
+  summarize(n=sum(!is.na(value)),
+            geomean=round(geoMean(value, na.rm = T), digits = 2),
+            geosd=round(geoSD(value, na.rm = T), digits = 2),
+            min=min(value, na.rm = T),
+            max=max(value, na.rm = T))
+
+All_Data %>% 
+  summarise(total=sum(!is.na(Mn55) | !is.na(Cu65) | !is.na(Cd111) | !is.na(Hg202) | !is.na(PB208) | !is.na(U238) | !is.na(As75) | !is.na(Fe57)))
+
+```
 
 ## Data Visualization - Exploratory
-### Metal Concentrations
-```{r metals}
-#The initial columns are for Mn55, Cu65, Cd111, Hg202, Pb208, and U238.
-#There are additional columns with metal concentrations for arsenic and iron (As_75 and Fe_57) that come later after the hormone level columns.
-#The differences in naming format make me think these were analyzed either at different times or on different machines or with different techniques, perhaps? 
-#Going to make things uniform for posterity.
-colnames(Metals)[colnames(Metals) == "As_75"] <- "As75"
-colnames(Metals)[colnames(Metals) == "Fe_57"] <- "Fe57"
-```
 
-### Melting Metals Together :)
+
+### "Melting" Metals Together :)
 ```{r melting_data}
 library(reshape2)
+
 data.melt <- melt(Metals,id.vars=c('ID','Date'), measure.vars=c('Mn55','Cu65','Cd111', 'Hg202', 'Pb208', 'U238'))
 library(ggplot2)
 ggplot(data.melt) +
@@ -39,15 +58,119 @@ ggplot(data.melt) +
         axis.text.x = element_blank(),
         panel.background = element_rect(fill="#ffffff"),
         axis.line = element_line(color="#000000"))+
-  ylab("Ln Concentration (ug/g)")+
+  ylab("Log Concentration (ug/g)")+
   labs(fill='Metals')
+
+ggplot(data=data.melt, aes(y=log(value), x=variable))+
+  geom_jitter(aes(color=variable))
+
+ggplot(data=data.melt, aes(y=log(value), x=variable))+
+  geom_violin(aes(fill=variable))
+
+#Look up reference values for hair. WHO, NHANES, etc.
+
+#Labeling Outliers
+outlier_tmp <- lapply(unique(data.melt$variable),# Get outlier information
+                      function (g) {
+                        stats <- quantile(data.melt$value[data.melt$variable == g], na.rm = TRUE) # Quantiles
+                        iqr   <- diff(stats[c(2, 4)]) # Inter quartile range
+                        out   <- data.melt$value[data.melt$variable == g] < (stats[2L] - 1.5 * iqr) | data.melt$value[data.melt$variable == g] > (stats[4L] + 1.5 * iqr)  # Outlier identifier
+                        outlier_tmp <- (1:nrow(data.melt))[data.melt$variable == g][out]                                                             # Outlier position
+                      })
+names(outlier_tmp) <- levels(data.melt$variable)
+outlier_data <- data.frame(label = data.melt$ID[unlist(outlier_tmp)],                                                                                 # Transform outlier information into data.frame
+                           value = data.melt$value[unlist(outlier_tmp)],
+                           group = substr(names(unlist(outlier_tmp)), 1, 2))
+outlier_data
+
+ggplot(data.melt) +
+  geom_boxplot(aes(y=log(value), x=substr(variable, 1,2), fill=variable))+
+  theme(axis.ticks.x = element_blank(),
+        panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"))+
+  geom_text(data = outlier_data, 
+            aes(x = group, y = log(value), label = label), 
+            hjust = -.3)+
+  ylab("Log Concentration (ug/g)")+
+  xlab("")+
+  labs(fill='Metals')
+
+outlier_data <- subset(outlier_data, !is.na(outlier_data$value))
+
+outlier_data %>% 
+  arrange(value) %>% 
+  group_by(group, label) %>% 
+  summarise(n=length(label))
+
+
+#Looking at only the highest...
+#Labeling Outliers
+outlier_tmp2 <- lapply(unique(data.melt$variable),# Get outlier information
+                      function (g) {
+                        stats <- quantile(data.melt$value[data.melt$variable == g], na.rm = TRUE) # Quantiles
+                        iqr   <- diff(stats[c(2, 4)]) # Inter quartile range
+                        out   <- data.melt$value[data.melt$variable == g] < (stats[2L] - 15 * iqr) | data.melt$value[data.melt$variable == g] > (stats[4L] + 15 * iqr)  # Outlier identifier
+                        outlier_tmp <- (1:nrow(data.melt))[data.melt$variable == g][out]                                                             # Outlier position
+                      })
+names(outlier_tmp2) <- levels(data.melt$variable)
+outlier_data2 <- data.frame(label = data.melt$ID[unlist(outlier_tmp2)],                                                                                 # Transform outlier information into data.frame
+                           value = data.melt$value[unlist(outlier_tmp2)],
+                           group = substr(names(unlist(outlier_tmp2)), 1, 2))
+outlier_data2
+
+outlier_data2 <- subset(outlier_data2, !is.na(outlier_data2$value))
+
+ggplot(data.melt) +
+  geom_boxplot(aes(y=log(value), x=substr(variable, 1,2), fill=variable))+
+  theme(axis.ticks.x = element_blank(),
+        panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"))+
+  geom_text(data = outlier_data2, 
+            aes(x = group, y = log(value), label = label), 
+            hjust = -.3)+
+  ylab("Log Concentration (ug/g)")+
+  xlab("")+
+  labs(fill='Metals')
+
+outlier_data2 %>% 
+  group_by(label) %>% 
+  summarise(number_of_metals_with_outliers=length(label))
+
+###TOP 3 METAL CONCENTRATIONS AND IDS FOR EACH METAL
+##Cd
+#Y1075: 3.100
+#R1118: 2.870
+#R1003: 1.410
+
+##Cu
+#R1116: 1704.130
+#R1115: 1088.650
+#R1014: 981.290
+
+##Hg
+#R1052: 60.175
+#R1012: 52.476
+#R1111: 17.158
+
+##Mn
+#R1036: 103.320
+#R1118: 65.240
+#R1014: 56.410
+
+##Pb
+#R1115: 76.450
+#R1118: 69.000
+#C1005: 20.030
+
+##U
+#Y1064: 21.080
+#Y1092: 9.240
+#Y1013: 4.570
+
 ```
 
 ### Concentrations by Date
 ```{r envt_samples_by_collectiondate}
-#There is a single data point for the year 2013, with the rest being April-November 2018.
-#This is likely either a mistake in input or some other error, but I will not include this point in subsequent analysis.
-#The concentration values for this single row are blank anyway.
 ggplot(data.melt, aes(y=log(value), x=Date, color=variable))+
   geom_point()+
   geom_smooth(se=F)+
@@ -55,7 +178,7 @@ ggplot(data.melt, aes(y=log(value), x=Date, color=variable))+
         axis.text.x=element_text(angle=60, hjust=1),
         axis.line = element_line(color="#000000"))+
   scale_x_date(date_breaks = "1 month", date_labels =  "%b")+
-  ylab("Ln Concentration (Units)")+
+  ylab("Ln Concentration (ug/g)")+
   xlab("Date of Sample Collection, 2018")+
   labs(color='Metals')
 
@@ -83,13 +206,55 @@ data.melt %>%
 library(EnvStats)
 data.melt$value <- as.numeric(data.melt$value)
 knitr::kable(data.melt %>%
-               filter(value>=0) %>% #This is ignoring negative concentrations in dataset, of which As75 has twelve.
+               filter(value>0) %>% #This is ignoring negative concentrations in dataset, of which As75 has twelve.
                group_by(variable) %>% 
                summarize(n=sum(!is.na(value)),
                          geomean=round(geoMean(value, na.rm = T), digits = 2),
                          geosd=round(geoSD(value, na.rm = T), digits = 2)))
 
 #create_report(data.melt) (Only run if you need to.)
+
+Metals %>% 
+  filter(!is.na(Mn55)|!is.na(Cu65)|!is.na(Cd111)|!is.na(Hg202)|!is.na(Pb206)|!is.na(Pb207)|!is.na(Pb208)|!is.na(U238)) %>% 
+  summarize(n=length(unique(ID)))
+
+
+#Doing the same but with imputed Hg:
+data.melt2 <- melt(Metals,id.vars=c('ID','Date'), measure.vars=c('Log_Mn55','Log_Cu65','Log_Cd111', 'Log_Hg202_Imp', 'Log_Pb208', 'Log_U238'))
+
+
+data.melt2 %>% 
+  group_by(variable) %>% 
+  summarize(number_NAs=sum(is.na(value)))
+
+#Making a table re: metal concentration values
+library(EnvStats)
+data.melt2$value <- as.numeric(data.melt2$value)
+knitr::kable(data.melt2 %>%
+               group_by(variable) %>% 
+               summarize(n=length(value),
+                         median=round(median(value, na.rm = T), digits = 2),
+                         mean_log=round(mean(value, na.rm = T), digits = 2),
+                         sd_log=round(sd(value, na.rm = T), digits = 2)))
+
+data.melt3 <- data.melt2 %>%
+  group_by(variable) %>% 
+  summarize(n=length(value),
+            median=round(median(value, na.rm = T), digits = 2),
+            mean_log=round(mean(value, na.rm = T), digits = 2),
+            sd_log=round(sd(value, na.rm = T), digits = 2))
+
+ggplot(data=data.melt2, aes(x=value))+
+  geom_histogram(aes(fill=variable), alpha=0.5)+
+  geom_vline(data=data.melt3, aes(xintercept=median, color=variable))+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 14))+
+  labs(fill="Variable and Median Value",
+       color="Variable and Median Value")+
+  ylab("Frequency")+
+  xlab("Log Concentration")
+
 ```
 
 ### Distribution of Metals Data
@@ -124,11 +289,22 @@ Metals %>%
   ggtitle("Distributions of Metals Concentrations")+
   ylab("Density")+
   xlab("Log-Transformed Concentration")+
-  theme(text = element_text(size = 20))
+  theme(text = element_text(size = 12))
 
+Metals %>% 
+  select(Log_Mn55, Log_Cu65, Log_Cd111, Log_Hg202_Imp, Log_Pb208, Log_U238, Site, ID) %>% 
+  pivot_longer(-c(ID, Site), names_to="Metals", values_to="Log_Concentration") %>%
+  ggplot(aes(x=Log_Concentration)) + 
+  geom_density() +
+  facet_wrap(~ Metals) +
+  ggtitle("Distributions of Metals Concentrations")+
+  ylab("Density")+
+  xlab("Log-Transformed Concentration")+
+  theme(text = element_text(size = 14))
 
 # New facet label names for supp variable
 site.labs <- c("1" = "CSF", "2" = "RCBH", "3" = "YRMC")
+gender.labs <- c("1" = "Male", "2" = "Female")
 
 Metals %>% 
   select(Mn55, Cu65, Cd111, Hg202, Pb208, U238, Site, ID) %>% 
@@ -139,48 +315,40 @@ Metals %>%
   ggtitle("Metals Concentrations by Site")+
   ylab("Log Concentrations")+
   xlab("")+
-  theme(text = element_text(size = 15),
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        panel.spacing = unit(0.75, "cm"))
+
+Metals %>% 
+  select(Log_Mn55, Log_Cu65, Log_Cd111, Log_Hg202_Imp, Log_Pb208, Log_U238, Site, ID) %>% 
+  pivot_longer(-c(ID, Site), names_to="Metals", values_to="Log_Concentration") %>%
+  ggplot(aes(y=Log_Concentration, fill=Metals)) + 
+  geom_boxplot() +
+  facet_wrap(~ Site, labeller = labeller(Site = site.labs)) +
+  ggtitle("Metals Concentrations by Site")+
+  ylab("Log Concentrations")+
+  xlab("")+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
         panel.spacing = unit(0.75, "cm"))
 ```
 
-### Hormone Levels
-```{r hormones, warning=F}
-#Looking at total levels first before free 
-library(gridExtra)
-TSH <- ggplot(Metals) +geom_boxplot(aes(y=TSH)) +theme(axis.ticks.x = element_blank(),axis.text.x = element_blank()) +theme_classic() +ylab("TSH (units)")
-T3 <- ggplot(Metals) +geom_boxplot(aes(y=TotalT3)) +theme(axis.ticks.x = element_blank(),axis.text.x = element_blank()) +theme_classic() +ylab("Total T3 (units)")
-T4 <- ggplot(Metals) +geom_boxplot(aes(y=TotalT4)) +theme(axis.ticks.x = element_blank(),axis.text.x = element_blank()) +theme_classic() +ylab("Total T4 (units)")
-Cortisol <- ggplot(Metals) +geom_boxplot(aes(y=Cortisol)) +theme(axis.ticks.x = element_blank(),axis.text.x = element_blank()) +theme_classic() +ylab("Cortisol (units)")
-
-grid.arrange(TSH, Cortisol, T3, T4)
-
-#Looking at distributions
-hist(Metals$TSH)
-hist(Metals$TotalT3)
-hist(Metals$TotalT4)
-hist(Metals$Cortisol)
-
-#Levels by date
-data.melt2 <- melt(Metals,id.vars=c('ID','Date'), measure.vars=c('TSH','TotalT3','TotalT4', 'Cortisol'))
-
-ggplot(data.melt2, aes(y=value, x=Date, color=variable))+
-  geom_point()+
-  geom_smooth(se=F)+
-  theme(panel.background = element_rect(fill="#ffffff"),
-        axis.text.x=element_text(angle=60, hjust=1),
-        axis.line = element_line(color="#000000"))+
-  scale_x_date(date_breaks = "1 month", date_labels =  "%b")+
-  ylab("Hormone Levels (Units)")+
-  xlab("Date of Sample Collection")+
-  labs(color='Hormones')
-
-#create_report(data.melt2) Only do when necessary
+### Correlation of Metals
+```{r corr}
+cor(Metals[, c("Log_Mn55", "Log_Cu65", "Log_Cd111", "Log_Hg202_Imp", "Log_Pb208", "Log_U238")], use="complete.obs")
 ```
 
 ### Plotting Hormone Levels Against Metal Concentrations
 ```{r metals_hormones}
-#This may be irrelevant if we use a PCA, but doing it anyway just to see...
-#I can always do this again but with the simplified results of the PCA
+#This may be irrelevant, but doing it anyway just to see...
+#I can always do this again but with the results of the PCA too
+library(gridExtra)
 
 #Cortisol
 Mn_Cortisol <- ggplot(Metals, aes(x=log(Mn55), y=Cortisol))+geom_point()
@@ -195,3 +363,964 @@ Fe_Cortisol <- ggplot(Metals, aes(x=log(Fe57), y=Cortisol))+geom_point()
 grid.arrange(Mn_Cortisol, Cu_Cortisol, Cd_Cortisol, Hg_Cortisol, Pb_Cortisol, U_Cortisol, As_Cortisol, Fe_Cortisol)
 ```
 
+### Analysis of Measured BMI against Individual Metals
+```{r measured_bmi_metals}
+
+Mn55_BMI_measured <- Metals[,c("ID", "Site", "Gender", "bmi", "age", "Log_Mn55")]
+Cu65_BMI_measured <- Metals[,c("ID", "Site", "Gender", "bmi", "age", "Log_Cu65")]
+Cd111_BMI_measured <- Metals[,c("ID", "Site", "Gender", "bmi", "age", "Log_Cd111")]
+Hg202_BMI_measured <- Metals[,c("ID", "Site", "Gender", "bmi", "age", "Log_Hg202_Imp")]
+Pb208_BMI_measured <- Metals[,c("ID", "Site", "Gender", "bmi", "age", "Log_Pb208")]
+U238_BMI_measured <- Metals[,c("ID", "Site", "Gender", "bmi", "age", "Log_U238")]
+
+colnames(Mn55_BMI_measured) <- c("ID", "Site", "Gender", "bmi", "age", "Log_Concentration")
+Mn55_BMI_measured$Metal <- rep(c("Mn55"), length(Mn55_BMI_measured$age))
+colnames(Cu65_BMI_measured) <- c("ID", "Site", "Gender", "bmi", "age", "Log_Concentration")
+Cu65_BMI_measured$Metal <- rep(c("Cu65"), length(Cu65_BMI_measured$age))
+colnames(Cd111_BMI_measured) <- c("ID", "Site", "Gender", "bmi", "age", "Log_Concentration")
+Cd111_BMI_measured$Metal <- rep(c("Cd111"), length(Cd111_BMI_measured$age))
+colnames(Hg202_BMI_measured) <- c("ID", "Site", "Gender", "bmi", "age", "Log_Concentration")
+Hg202_BMI_measured$Metal <- rep(c("Hg202"), length(Hg202_BMI_measured$age))
+colnames(Pb208_BMI_measured) <- c("ID", "Site", "Gender", "bmi", "age", "Log_Concentration")
+Pb208_BMI_measured$Metal <- rep(c("Pb208"), length(Pb208_BMI_measured$age))
+colnames(U238_BMI_measured) <- c("ID", "Site", "Gender", "bmi", "age", "Log_Concentration")
+U238_BMI_measured$Metal <- rep(c("U238"), length(U238_BMI_measured$age))
+
+Metals_BMI_measured <- rbind(Mn55_BMI_measured, Cu65_BMI_measured, Cd111_BMI_measured, Hg202_BMI_measured, Pb208_BMI_measured, U238_BMI_measured)
+
+ggplot(Metals_BMI_measured, aes(x=Log_Concentration, y=log(bmi), color=Metal))+
+  geom_point()+
+  geom_smooth(method=lm, se=F)+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.text.x=element_text(angle=60, hjust=1),
+        axis.line = element_line(color="#000000"))+
+  xlab("Logtransformed Concentration (ug/g)")+
+  ylab("Logtransformed BMI - Measured at Time of Study")
+
+ggplot(Metals_BMI_measured, aes(y=Log_Concentration, x=age, color=Metal))+
+  geom_point()+
+  geom_smooth(method=lm, se=F)+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.text.x=element_text(angle=60, hjust=1),
+        axis.line = element_line(color="#000000"))+
+  xlab("Age")+
+  ylab("Log Concentration (ug/g)")
+
+Metals %>% 
+  select(Mn55, Cu65, Cd111, Hg202, Pb208, U238, Site, ID, Gender) %>% 
+  pivot_longer(-c(ID, Site), names_to="Metal", values_to="Concentration") %>%
+  ggplot(aes(y=log(Concentration), fill=Metal)) + 
+  geom_boxplot() +
+  facet_wrap(~ Site, labeller = labeller(Site = site.labs)) +
+  ggtitle("Metals Concentrations by Site")+
+  ylab("Log Concentrations")+
+  xlab("")+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        panel.spacing = unit(0.75, "cm"))
+
+Metals %>% 
+  select(Mn55, Cu65, Cd111, Hg202, Pb208, U238, Site, ID, Gender, age) %>% 
+  pivot_longer(-c(ID, Site, Gender, age), names_to="Metal", values_to="Concentration") %>%
+  ggplot(aes(x=age, y=log(Concentration), fill=Metal)) + 
+  geom_point(aes(color=Metal)) +
+  geom_smooth(aes(color=Metal), size=2, method=lm, se=F) +
+  facet_wrap(~ Gender, labeller = labeller(Gender = gender.labs)) +
+  ggtitle("Metals Concentrations by Gender")+
+  ylab("Log Hair Concentrations (ug/g)")+
+  xlab("Age")+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        panel.spacing = unit(0.75, "cm"))
+
+Metals %>% 
+  select(Mn55, Cu65, Cd111, Hg202, Pb208, U238, Site, ID, Gender, Dental_health, age) %>% 
+  pivot_longer(-c(ID, Site, Gender, age, Dental_health), names_to="Metal", values_to="Concentration") %>%
+  ggplot(aes(y=log(Concentration), x=Metal, fill=as.factor(Dental_health))) + 
+  geom_boxplot() +
+  ggtitle("Metals Concentrations by Dental Health")+
+  ylab("Log Concentrations")+
+  xlab("")+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        panel.spacing = unit(0.75, "cm"))
+```
+```{r gender_stuff}
+Metals %>% 
+  select(Mn55, Cu65, Cd111, Hg202, Pb208, U238, Site, ID, Gender, Dental_health, age) %>%
+  filter(!is.na(Gender)) %>%
+  pivot_longer(-c(ID, Site, Gender, age, Dental_health), names_to="Metal", values_to="Concentration") %>%
+  ggplot(aes(x=Concentration, y=Metal, color=as.factor(Gender), shape=as.factor(Gender))) + 
+  geom_jitter(alpha=0.9) +
+  ggtitle("Metals Concentrations by Gender")+
+  ylab("")+
+  xlab("Concentrations")+
+  scale_shape_discrete(name="Gender",
+                       labels=c("Male", "Female"))+
+  scale_color_discrete(name="Gender",
+                       labels=c("Male", "Female"))+
+  xlim(0,10)+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        panel.spacing = unit(0.75, "cm"))
+
+Metals %>% 
+  select(Hg202, age, Gender) %>%
+  pivot_longer(-c(age, Gender), names_to="Metal", values_to="Concentration") %>%
+  ggplot(aes(y=log(Concentration), x=age)) + 
+  geom_point(alpha=0.9) +
+  geom_smooth(method=lm, se=F)+
+  ggtitle("Hg by Age")+
+  ylab("")+
+  xlab("Age")+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        panel.spacing = unit(0.75, "cm"))+
+  facet_grid(~Gender, labeller = labeller(Gender = gender.labs))
+  
+
+#Testing significance of the line above
+age_hg_reg <- lm(Hg202~age + Gender, data=Metals)
+summary(age_hg_reg)
+
+
+Metals %>% 
+  select(U238, Site, ID, Gender, bmi, age) %>%
+  filter(!is.na(Gender)) %>%
+  pivot_longer(-c(ID, Site, Gender, age, bmi), names_to="Metal", values_to="Concentration") %>%
+  ggplot(aes(x=log(Concentration), y=log(bmi), color=as.factor(Metal), shape=as.factor(Gender))) + 
+  geom_jitter(alpha=0.9) +
+  ggtitle("U Concentrations Related to BMI by Gender")+
+  ylab("log BMI")+
+  xlab("log Concentrations")+
+  scale_shape_discrete(name="Gender",
+                       labels=c("Male", "Female"))+
+  scale_color_manual(name="Metals",
+                     values=c("U238"="magenta3"))+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        panel.spacing = unit(0.75, "cm"))
+
+Metals %>% 
+  select(Mn55, Cu65, Cd111, Hg202, Pb208, U238, Site, ID, Gender, age) %>%
+  filter(!is.na(Gender)) %>%
+  pivot_longer(-c(ID, Site, Gender, age), names_to="Metal", values_to="Concentration") %>%
+  ggplot(aes(y=Concentration, x=age, color=as.factor(Gender)))+ 
+  geom_jitter(alpha=0.5) +
+  geom_smooth(aes(color=as.factor(Gender)), size=2, alpha=0.5, method = lm, se=F)+
+  ggtitle("Metals Concentrations by Age and Gender")+
+  xlab("Age")+
+  ylab("Concentrations (ug/g)")+
+  scale_color_discrete(name="Gender",
+                       labels=c("Male", "Female"))+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        panel.spacing = unit(0.75, "cm"))+
+  facet_wrap(~Metal, scales = "free")
+
+#It is mostly women with the high levels, but that might be an artifact of having mostly women in the study (21% male, 79% female).
+
+
+
+```
+
+# CART Analysis
+```{r CART}
+library(rpart)
+library(rpart.plot)
+
+#Need to read: http://www.sthda.com/english/articles/35-statistical-machine-learning-essentials/141-cart-model-decision-tree-essentials/ 
+
+Metals_CART <- Metals %>% 
+  select(Race_ai_an,
+         Race_black,
+         Race_white,
+         Race_dk,
+         Num_in_household,
+         Child_under_18,
+         Army,
+         Marine_corp,
+         Coast_guard,
+         Armed_forces_dk,
+         Self_employed,
+         Laid_off,
+         Homemaker,
+         Disabled,
+         employ_other,
+         employ_dk,
+         Pesticides,
+         Born_in_Yuma,
+         Residence_type,
+         Health_care_source,
+         Health_consult_place,
+         afford_rx_meds,
+         afford_dental_care,
+         afford_specialist,
+         Delay_telephone,
+         Delay_wait,
+         Delay_transportation,
+         General_health,
+         Height_ft,
+         Weight,
+         Dental_visit,
+         arthritis,
+         chf,
+         angnia,
+         stroke,
+         thyroid_prob,
+         hypothyroid,
+         goiter,
+         cancer,
+         undescended,
+         HTN,
+         HTN_current_med,
+         Chol_med,
+         DM_age,
+         Income,
+         thyroid_prob_D,
+         Hypo_D,
+         Goiter_D,
+         clinical,
+         emr_height_inches,
+         emr_bmi,
+         emr_hyperthyroidism,
+         emr_thyroid_cancer,
+         emr_cancer,
+         emr_diabetes,
+         bmi,
+         hypo_recode,
+         goiter_recode,
+         dm_recode,
+         tobacco_history_fact,
+         pack_per_day,
+         Result_P_ng_mL,
+         any_thyroid_problem_dummy,
+         Log_Mn55,
+         Log_Cd111,
+         Log_Pb208,
+         Site,
+         Gender,
+         Ethnicity,
+         Race_asian,
+         Race_pac_isl,
+         Race_other,
+         Race_refuse,
+         Marital_status,
+         Num_children,
+         Education,
+         Birth_country,
+         Armed_forces,
+         Navy,
+         Air_force,
+         Other,
+         Armed_forces_refuse,
+         Work_for_pay,
+         Looking,
+         Retired,
+         Student,
+         Maternity_sick_leave,
+         employ_other_A,
+         Occupation_SOC,
+         Farmer,
+         Lived_in_Yuma,
+         Yuma_pregnant_mom,
+         Own_rent,
+         Homeless,
+         Water_home,
+         Water_cooking,
+         Water_coffee,
+         Water_work,
+         Health_care,
+         Healthcare_lastyear,
+         Health_consult,
+         Routine_care,
+         Doctor_time,
+         ER_visits,
+         afford_mh_care,
+         afford_eyeglasses,
+         afford_follow_up,
+         Delay_appt,
+         Delay_open,
+         Health_compare,
+         Height_inch,
+         Overweight,
+         Dental_health,
+         gout,
+         chd,
+         heart_attack,
+         emphysema,
+         hyperthyroid,
+         thyroid_cancer,
+         weak_kidney,
+         pos,
+         ambiguous,
+         HTN_hx_meds,
+         Cholesterol,
+         Diabetes,
+         insulin,
+         diabetic_pills,
+         age,
+         Hyper_D,
+         Thyroid_cancer_D,
+         thyroid_conditions,
+         endo,
+         Cortisol,
+         emr_weight,
+         emr_thyroid_problem,
+         emr_hypothyroidism,
+         emr_goiter,
+         emr_pos,
+         emr_obesity,
+         height_total,
+         age_group,
+         hyper_recode,
+         thy_cancer_recode,
+         pos_recode,
+         emr_dm_recode,
+         number_years,
+         tremor,
+         emr_thyroid_problem_fromothercolumns,
+         age_group2,
+         Log_Cu65,
+         Log_Hg202_Imp,
+         Log_U238)
+
+cols.num <- c("Num_in_household", "Child_under_18", "Height_ft", "Weight", "DM_age", "emr_height_inches", "emr_bmi", "bmi", "Result_P_ng_mL", "Log_Mn55", "Log_Cd111", "Log_Pb208", "Num_children", "Height_inch", "age", "Cortisol", "emr_weight", "height_total", "number_years", "Log_Cu65", "Log_Hg202_Imp", "Log_U238")
+Metals_CART[cols.num] <- sapply(Metals_CART[cols.num],as.numeric)
+sapply(Metals_CART, class)
+
+
+# Inspect the data
+sample_n(Metals_CART, 3)
+# Split the data into training and test set
+library(caret)
+set.seed(0)
+training.samples <- createDataPartition(Metals_CART$Log_Mn55, times = 1, p = 0.8, list = F)
+train.data  <- Metals_CART[training.samples, ]
+test.data <- Metals_CART[-training.samples, ]
+
+train.data <- as.data.frame(train.data)
+
+library(rpart)
+library(rpart.plot)
+model.Mn <- rpart(Log_Mn55 ~., data = train.data)
+par(xpd = NA) # otherwise on some devices the text is clipped
+rpart.plot(model.Mn, faclen = 2)
+
+
+#Round with dummy variables for occupation and smoking
+Metals_CART2 <- Metals %>% 
+  select(Race_ai_an,
+         Race_black,
+         Race_white,
+         Race_dk,
+         Num_in_household,
+         Child_under_18,
+         Army,
+         Marine_corp,
+         Coast_guard,
+         Armed_forces_dk,
+         Self_employed,
+         Laid_off,
+         Homemaker,
+         Disabled,
+         employ_other,
+         employ_dk,
+         Pesticides,
+         Born_in_Yuma,
+         Residence_type,
+         Health_care_source,
+         Health_consult_place,
+         afford_rx_meds,
+         afford_dental_care,
+         afford_specialist,
+         Delay_telephone,
+         Delay_wait,
+         Delay_transportation,
+         General_health,
+         Height_ft,
+         Weight,
+         Dental_visit,
+         arthritis,
+         chf,
+         angnia,
+         stroke,
+         thyroid_prob,
+         hypothyroid,
+         goiter,
+         cancer,
+         undescended,
+         HTN,
+         HTN_current_med,
+         Chol_med,
+         DM_age,
+         Income,
+         thyroid_prob_D,
+         Hypo_D,
+         Goiter_D,
+         clinical,
+         emr_height_inches,
+         emr_bmi,
+         emr_hyperthyroidism,
+         emr_thyroid_cancer,
+         emr_cancer,
+         emr_diabetes,
+         bmi,
+         hypo_recode,
+         goiter_recode,
+         dm_recode,
+         pack_per_day,
+         Result_P_ng_mL,
+         any_thyroid_problem_dummy,
+         Log_Mn55,
+         Log_Cd111,
+         Log_Pb208,
+         Site,
+         Gender,
+         Ethnicity,
+         Race_asian,
+         Race_pac_isl,
+         Race_other,
+         Race_refuse,
+         Marital_status,
+         Num_children,
+         Education,
+         Birth_country,
+         Armed_forces,
+         Navy,
+         Air_force,
+         Other,
+         Armed_forces_refuse,
+         Work_for_pay,
+         Looking,
+         Retired,
+         Student,
+         Maternity_sick_leave,
+         employ_other_A,
+         Farmer,
+         Lived_in_Yuma,
+         Yuma_pregnant_mom,
+         Own_rent,
+         Homeless,
+         Water_home,
+         Water_cooking,
+         Water_coffee,
+         Water_work,
+         Health_care,
+         Healthcare_lastyear,
+         Health_consult,
+         Routine_care,
+         Doctor_time,
+         ER_visits,
+         afford_mh_care,
+         afford_eyeglasses,
+         afford_follow_up,
+         Delay_appt,
+         Delay_open,
+         Health_compare,
+         Height_inch,
+         Overweight,
+         Dental_health,
+         gout,
+         chd,
+         heart_attack,
+         emphysema,
+         hyperthyroid,
+         thyroid_cancer,
+         weak_kidney,
+         pos,
+         ambiguous,
+         HTN_hx_meds,
+         Cholesterol,
+         Diabetes,
+         insulin,
+         diabetic_pills,
+         age,
+         Hyper_D,
+         Thyroid_cancer_D,
+         thyroid_conditions,
+         endo,
+         Cortisol,
+         emr_weight,
+         emr_thyroid_problem,
+         emr_hypothyroidism,
+         emr_goiter,
+         emr_pos,
+         emr_obesity,
+         height_total,
+         age_group,
+         hyper_recode,
+         thy_cancer_recode,
+         pos_recode,
+         emr_dm_recode,
+         number_years,
+         tremor,
+         emr_thyroid_problem_fromothercolumns,
+         age_group2,
+         Log_Cu65,
+         Log_Hg202_Imp,
+         Log_U238,
+         Occ_NotWorking,
+         Occ_Management, 
+         Occ_Busn_Fin, 
+         Occ_Comp_Math, 
+         Occ_PhysSci, 
+         Occ_SoclSrv, 
+         Occ_Edu, 
+         Occ_Healthcare, 
+         Occ_HealthSupp, 
+         Occ_ProtSrvc, 
+         Occ_FoodPrep, 
+         Occ_GroundsMaint, 
+         Occ_PersnlCare, 
+         Occ_Sales, 
+         Occ_AdminSupp, 
+         Occ_Farming, 
+         Occ_Constr, 
+         Occ_InstallRepair, 
+         Occ_Production, 
+         Occ_Transp, 
+         Occ_Military, 
+         Occ_NA,
+         Smoke_Former, 
+         Smoke_Occasional, 
+         Smoke_Daily, 
+         Smoke_NA)
+
+Metals_CART2[cols.num] <- sapply(Metals_CART2[cols.num],as.numeric)
+sapply(Metals_CART2, class)
+
+
+# Inspect the data
+sample_n(Metals_CART2, 3)
+# Split the data into training and test set
+
+set.seed(0)
+training.samples2 <- createDataPartition(Metals_CART2$Log_Mn55, times = 1, p = 0.8, list = F)
+train.data2  <- Metals_CART2[training.samples, ]
+test.data2 <- Metals_CART2[-training.samples, ]
+
+train.data2 <- as.data.frame(train.data2)
+
+
+
+model.Mn2 <- rpart(Log_Mn55 ~., data = train.data2)
+par(xpd = NA) # otherwise on some devices the text is clipped
+rpart.plot(model.Mn2, faclen = 2)
+
+#Removing other metals from the Mn analysis. Assuming based on the PCA that the metals are high together, so it makes sense that they would have strong associations. But we care more about the demographics / behaviors. 
+Metals_CART3 <- Metals %>% 
+  select(Race_ai_an,
+         Race_black,
+         Race_white,
+         Race_dk,
+         Num_in_household,
+         Child_under_18,
+         Army,
+         Marine_corp,
+         Coast_guard,
+         Armed_forces_dk,
+         Self_employed,
+         Laid_off,
+         Homemaker,
+         Disabled,
+         employ_other,
+         employ_dk,
+         Pesticides,
+         Born_in_Yuma,
+         Residence_type,
+         Health_care_source,
+         Health_consult_place,
+         afford_rx_meds,
+         afford_dental_care,
+         afford_specialist,
+         Delay_telephone,
+         Delay_wait,
+         Delay_transportation,
+         General_health,
+         Height_ft,
+         Weight,
+         Dental_visit,
+         arthritis,
+         chf,
+         angnia,
+         stroke,
+         thyroid_prob,
+         hypothyroid,
+         goiter,
+         cancer,
+         undescended,
+         HTN,
+         HTN_current_med,
+         Chol_med,
+         DM_age,
+         Income,
+         thyroid_prob_D,
+         Hypo_D,
+         Goiter_D,
+         clinical,
+         emr_height_inches,
+         emr_bmi,
+         emr_hyperthyroidism,
+         emr_thyroid_cancer,
+         emr_cancer,
+         emr_diabetes,
+         bmi,
+         hypo_recode,
+         goiter_recode,
+         dm_recode,
+         pack_per_day,
+         Result_P_ng_mL,
+         any_thyroid_problem_dummy,
+         Log_Mn55,
+         #Log_Cd111,
+         #Log_Pb208,
+         Site,
+         Gender,
+         Ethnicity,
+         Race_asian,
+         Race_pac_isl,
+         Race_other,
+         Race_refuse,
+         Marital_status,
+         Num_children,
+         Education,
+         Birth_country,
+         Armed_forces,
+         Navy,
+         Air_force,
+         Other,
+         Armed_forces_refuse,
+         Work_for_pay,
+         Looking,
+         Retired,
+         Student,
+         Maternity_sick_leave,
+         employ_other_A,
+         Farmer,
+         Lived_in_Yuma,
+         Yuma_pregnant_mom,
+         Own_rent,
+         Homeless,
+         Water_home,
+         Water_cooking,
+         Water_coffee,
+         Water_work,
+         Health_care,
+         Healthcare_lastyear,
+         Health_consult,
+         Routine_care,
+         Doctor_time,
+         ER_visits,
+         afford_mh_care,
+         afford_eyeglasses,
+         afford_follow_up,
+         Delay_appt,
+         Delay_open,
+         Health_compare,
+         Height_inch,
+         Overweight,
+         Dental_health,
+         gout,
+         chd,
+         heart_attack,
+         emphysema,
+         hyperthyroid,
+         thyroid_cancer,
+         weak_kidney,
+         pos,
+         ambiguous,
+         HTN_hx_meds,
+         Cholesterol,
+         Diabetes,
+         insulin,
+         diabetic_pills,
+         age,
+         Hyper_D,
+         Thyroid_cancer_D,
+         thyroid_conditions,
+         endo,
+         Cortisol,
+         emr_weight,
+         emr_thyroid_problem,
+         emr_hypothyroidism,
+         emr_goiter,
+         emr_pos,
+         emr_obesity,
+         height_total,
+         age_group,
+         hyper_recode,
+         thy_cancer_recode,
+         pos_recode,
+         emr_dm_recode,
+         number_years,
+         tremor,
+         emr_thyroid_problem_fromothercolumns,
+         age_group2,
+         #Log_Cu65,
+         #Log_Hg202_Imp,
+         #Log_U238,
+         Occ_NotWorking,
+         Occ_Management, 
+         Occ_Busn_Fin, 
+         Occ_Comp_Math, 
+         Occ_PhysSci, 
+         Occ_SoclSrv, 
+         Occ_Edu, 
+         Occ_Healthcare, 
+         Occ_HealthSupp, 
+         Occ_ProtSrvc, 
+         Occ_FoodPrep, 
+         Occ_GroundsMaint, 
+         Occ_PersnlCare, 
+         Occ_Sales, 
+         Occ_AdminSupp, 
+         Occ_Farming, 
+         Occ_Constr, 
+         Occ_InstallRepair, 
+         Occ_Production, 
+         Occ_Transp, 
+         Occ_Military, 
+         Occ_NA,
+         Smoke_Former, 
+         Smoke_Occasional, 
+         Smoke_Daily, 
+         Smoke_NA)
+
+cols.num2 <- c("Num_in_household", "Child_under_18", "Height_ft", "Weight", "DM_age", "emr_height_inches", "emr_bmi", "bmi", "Result_P_ng_mL", "Log_Mn55", "Num_children", "Height_inch", "age", "Cortisol", "emr_weight", "height_total", "number_years")
+Metals_CART3[cols.num2] <- sapply(Metals_CART3[cols.num2],as.numeric)
+sapply(Metals_CART3, class)
+
+
+# Inspect the data
+sample_n(Metals_CART3, 3)
+# Split the data into training and test set
+
+set.seed(0)
+training.samples3 <- createDataPartition(Metals_CART3$Log_Mn55, times = 1, p = 0.8, list = F)
+train.data3  <- Metals_CART3[training.samples, ]
+test.data3 <- Metals_CART3[-training.samples, ]
+
+train.data3 <- as.data.frame(train.data3)
+
+
+
+model.Mn3 <- rpart(Log_Mn55 ~., data = train.data3)
+par(xpd = NA) # otherwise on some devices the text is clipped
+rpart.plot(model.Mn3, faclen = 2)
+
+#Taking out the medical diagnoses
+Metals_CART4 <- Metals %>% 
+  select(Race_ai_an,
+         Race_black,
+         Race_white,
+         Race_dk,
+         Num_in_household,
+         Child_under_18,
+         Army,
+         Marine_corp,
+         Coast_guard,
+         Armed_forces_dk,
+         Self_employed,
+         Laid_off,
+         Homemaker,
+         Disabled,
+         employ_other,
+         employ_dk,
+         Pesticides,
+         Born_in_Yuma,
+         Residence_type,
+         Health_care_source,
+         Health_consult_place,
+         afford_rx_meds,
+         afford_dental_care,
+         afford_specialist,
+         Delay_telephone,
+         Delay_wait,
+         Delay_transportation,
+         General_health,
+         Height_ft,
+         Weight,
+         Dental_visit,
+         #arthritis,
+         #chf,
+         #angnia,
+         #stroke,
+         #thyroid_prob,
+         #hypothyroid,
+         #goiter,
+         #cancer,
+         #undescended,
+         #HTN,
+         #HTN_current_med,
+         #Chol_med,
+         DM_age,
+         Income,
+         #thyroid_prob_D,
+         #Hypo_D,
+         #Goiter_D,
+         #clinical,
+         emr_height_inches,
+         emr_bmi,
+         #emr_hyperthyroidism,
+         #emr_thyroid_cancer,
+         #emr_cancer,
+         #emr_diabetes,
+         bmi,
+         #hypo_recode,
+         #goiter_recode,
+         #dm_recode,
+         pack_per_day,
+         Result_P_ng_mL,
+         #any_thyroid_problem_dummy,
+         Log_Mn55,
+         #Log_Cd111,
+         #Log_Pb208,
+         Site,
+         Gender,
+         Ethnicity,
+         Race_asian,
+         Race_pac_isl,
+         Race_other,
+         Race_refuse,
+         Marital_status,
+         Num_children,
+         Education,
+         Birth_country,
+         Armed_forces,
+         Navy,
+         Air_force,
+         Other,
+         Armed_forces_refuse,
+         Work_for_pay,
+         Looking,
+         Retired,
+         Student,
+         Maternity_sick_leave,
+         employ_other_A,
+         Farmer,
+         Lived_in_Yuma,
+         Yuma_pregnant_mom,
+         Own_rent,
+         Homeless,
+         Water_home,
+         Water_cooking,
+         Water_coffee,
+         Water_work,
+         Health_care,
+         Healthcare_lastyear,
+         Health_consult,
+         Routine_care,
+         Doctor_time,
+         ER_visits,
+         afford_mh_care,
+         afford_eyeglasses,
+         afford_follow_up,
+         Delay_appt,
+         Delay_open,
+         Health_compare,
+         Height_inch,
+         Overweight,
+         #Dental_health,
+         #gout,
+         #chd,
+         #heart_attack,
+         #emphysema,
+         #hyperthyroid,
+         #thyroid_cancer,
+         #weak_kidney,
+         #pos,
+         #ambiguous,
+         #HTN_hx_meds,
+         #Cholesterol,
+         #Diabetes,
+         #insulin,
+         #diabetic_pills,
+         age,
+         #Hyper_D,
+         #Thyroid_cancer_D,
+         #thyroid_conditions,
+         #endo,
+         Cortisol,
+         emr_weight,
+         #emr_thyroid_problem,
+         #emr_hypothyroidism,
+         #emr_goiter,
+         #emr_pos,
+         #emr_obesity,
+         height_total,
+         age_group,
+         #hyper_recode,
+         #thy_cancer_recode,
+         #pos_recode,
+         #emr_dm_recode,
+         number_years,
+         #tremor,
+         #emr_thyroid_problem_fromothercolumns,
+         age_group2,
+         #Log_Cu65,
+         #Log_Hg202_Imp,
+         #Log_U238,
+         Occ_NotWorking,
+         Occ_Management, 
+         Occ_Busn_Fin, 
+         Occ_Comp_Math, 
+         Occ_PhysSci, 
+         Occ_SoclSrv, 
+         Occ_Edu, 
+         Occ_Healthcare, 
+         Occ_HealthSupp, 
+         Occ_ProtSrvc, 
+         Occ_FoodPrep, 
+         Occ_GroundsMaint, 
+         Occ_PersnlCare, 
+         Occ_Sales, 
+         Occ_AdminSupp, 
+         Occ_Farming, 
+         Occ_Constr, 
+         Occ_InstallRepair, 
+         Occ_Production, 
+         Occ_Transp, 
+         Occ_Military, 
+         Occ_NA,
+         Smoke_Former, 
+         Smoke_Occasional, 
+         Smoke_Daily, 
+         Smoke_NA)
+
+cols.num3 <- c("Num_in_household", "Child_under_18", "Height_ft", "Weight", "DM_age", "emr_height_inches", "emr_bmi", "bmi", "Result_P_ng_mL", "Log_Mn55", "Num_children", "Height_inch", "age", "Cortisol", "emr_weight", "height_total", "number_years")
+Metals_CART4[cols.num3] <- sapply(Metals_CART4[cols.num3],as.numeric)
+sapply(Metals_CART4, class)
+
+
+# Inspect the data
+sample_n(Metals_CART4, 3)
+# Split the data into training and test set
+
+set.seed(0)
+training.samples4 <- createDataPartition(Metals_CART4$Log_Mn55, times = 1, p = 0.8, list = F)
+train.data4  <- Metals_CART4[training.samples, ]
+test.data4 <- Metals_CART4[-training.samples, ]
+
+train.data4 <- as.data.frame(train.data4)
+
+
+
+model.Mn4 <- rpart(Log_Mn55 ~., data = train.data4)
+pred.Mn4 <- predict(model.Mn4, test.data4, type="regre")
+model.Mn4.pruned <- prune(model.Mn4, cp = 0.02)
+par(xpd = NA) # otherwise on some devices the text is clipped
+rpart.plot(model.Mn4.pruned, faclen = 2)
+
+#Testing how well tree predicts the test data.
+
+#Now for classification tree
+
+```

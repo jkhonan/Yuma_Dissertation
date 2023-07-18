@@ -2,6 +2,7 @@
 title: "Data Cleaning"
 author: "Jenna Honan"
 date: "9/1/2022"
+edited: "5/2/2023"
 output: html_document
 ---
 
@@ -9,124 +10,515 @@ output: html_document
 
 Note: This is the first code to be run for this analysis.
 
-```{r setup, include=FALSE}
+```{r settingup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ## Importing Data
 library(readxl)
-Metals <- read_excel("~/Desktop/Research/Yuma/Yuma - R Project/Yuma Metals Project_EMR_Editted 23Aug2021 mental health & ID removed.xlsx", sheet = "Sqrt 2")
-
-#Reformating Date Data
-Metals$Date <- as.Date(as.numeric(Metals$Date), origin = "1899-12-30")
-Metals$DOB <- as.Date(as.numeric(Metals$DOB), origin = "1899-12-30")
+Metals <- read_excel("~/Desktop/Yuma Project/Yuma - R Project/Yuma Metals Project_EMR_Editted 23Aug2021 mental health & ID removed.xlsx", sheet = "Original_Uneditted")
 
 #Notes: Difference Between Metals and Metalloids
   #Metals have unique metallic properties such as shiny appearance, high density, higher melting points and electric conductivity. 
   #However, metalloids possess both metal properties and non-metal properties. 
   #Metals are located in the left side of the periodic table while metalloids are in the middle of metals and non-metals.
+
+Creatinine <- read_excel("~/Desktop/Yuma Project/Yuma - R Project/2021-0072_Urinary Creatinine Results.xlsx", skip=6)
+Perchlorate <- read_excel("~/Desktop/Yuma Project/Yuma - R Project/2021-0072_Urinary Perchlorate Report.xlsx", skip=7)
 ```
 
 ## Data Cleaning
 ```{r dataclean}
 library(dplyr)
+
+#Metals Data
+#Reformating Date Data
+Metals$Date <- as.Date(as.numeric(Metals$Date), origin = "1899-12-30")
+Metals$DOB <- as.Date(as.numeric(Metals$DOB), origin = "1899-12-30")
+
+### Fixing birthdays that were not correctly read by xl based on feedback from Mark Remiker, December 2022 ###
+#Note: C1045 is obviously an error on the part of the survey administrator.
+Metals$DOB_year <- ifelse(!is.na(Metals$DOB_year), Metals$DOB_year+1900, Metals$DOB_year)
+
 #Using 'Perchlorate codebook.pdf' as data dictionary
 
 ### Additional Notes from Mark Remiker, August 2022 ###
-#Num_in_household 
-#-	No data entry error here - that’s the response!  
-#Num_children
-#-	Same!  That’s the actual response.  
-#Armed_forces
-#-	1 = Yes, 2 = No, 3 = Don’t know, 4 = Refuse
-#-	61 = Yes, 62 = No, 63 = Don’t know, 64 = Refuse
-unique(Metals$Armed_forces)
+#Num_in_household -	No data entry error here - that’s the response!  
+#Num_children -	Same!  That’s the actual response.  
+#Armed_forces -	1 = Yes, 2 = No, 3 = Don’t know, 4 = Refuse, 61 = Yes, 62 = No, 63 = Don’t know, 64 = Refuse
 Metals$Armed_forces[Metals$Armed_forces==62] <- 2
-unique(Metals$Armed_forces)
-#Employment
-#-	1 = Working for pay, 2= Self-employed, 3= Looking for work, 4= Temporarily laid off, 5 = Retired, 6= A homemaker, 7= Student, 8= Permanently disabled, 9= Maternity/sick leave, 10= Other, 11= Don’t know, 12 = Refused
-#Health_care
-#-	21= Yes, 22= No, 24= I don’t know, 23= Refuse
-unique(Metals$Health_care)
+#Employment -	1 = Working for pay, 2= Self-employed, 3= Looking for work, 4= Temporarily laid off, 5 = Retired, 6= A homemaker, 7= Student, 8= Permanently disabled, 9= Maternity/sick leave, 10= Other, 11= Don’t know, 12 = Refused
+#Health_care -	21= Yes, 22= No, 24= I don’t know, 23= Refuse
 Metals$Health_care[Metals$Health_care==21] <- 1
 Metals$Health_care[Metals$Health_care==22] <- 2
-unique(Metals$Health_care)
-#Health_consult
-#-	21= Yes, 22= No, 24= I don’t know, 23= Refuse
-unique(Metals$Health_consult)
+#Health_consult -	21= Yes, 22= No, 24= I don’t know, 23= Refuse
 Metals$Health_consult[Metals$Health_consult==31] <- 1
 Metals$Health_consult[Metals$Health_consult==32] <- 2
 Metals$Health_consult[Metals$Health_consult==33] <- 3
 Metals$Health_consult[Metals$Health_consult==34] <- 4
 Metals$Health_consult[Metals$Health_consult==35] <- 5
-unique(Metals$Health_consult)
-#Health_consult_place
-#-	Blank and “.”  - Missing data
-#Health options/Medical conditions
-#-	1= Yes, 2= No, 3= Don’t know, 4= Refused 
-#HTN, HTN_hx_meds, Cholesterol, Cholesterol_meds
-#-	5= Yes, 6= No, 7= Don’t know 
-unique(Metals$HTN)
+#Health_consult_place -	Blank and “.”  - Missing data
+#Health options/Medical conditions -	1= Yes, 2= No, 3= Don’t know, 4= Refused 
+#HTN, HTN_hx_meds, Cholesterol, Cholesterol_meds -	5= Yes, 6= No, 7= Don’t know 
 Metals$HTN[Metals$HTN==5] <- 1
 Metals$HTN[Metals$HTN==6] <- 2
 Metals$HTN[Metals$HTN==7] <- 3
-unique(Metals$HTN)
-unique(Metals$HTN_hx_meds)
 Metals$HTN_hx_meds[Metals$HTN_hx_meds==5] <- 1
 Metals$HTN_hx_meds[Metals$HTN_hx_meds==6] <- 2
-unique(Metals$HTN_hx_meds)
-unique(Metals$Cholesterol)
 Metals$Cholesterol[Metals$Cholesterol==5] <- 1
 Metals$Cholesterol[Metals$Cholesterol==6] <- 2
 Metals$Cholesterol[Metals$Cholesterol==7] <- 3
-unique(Metals$Cholesterol)
-#Diabetes
-#-	31= Yes, 32= No, 33= Prediabetes 35= Don't know
-unique(Metals$Diabetes)
+#Diabetes -	31= Yes, 32= No, 33= Prediabetes 35= Don't know
 Metals$Diabetes[Metals$Diabetes==31] <- 1
 Metals$Diabetes[Metals$Diabetes==32] <- 3
 Metals$Diabetes[Metals$Diabetes==33] <- 2
 Metals$Diabetes[Metals$Diabetes==35] <- 4
-unique(Metals$Diabetes)
-#Dm_age
-#-	“.” = missing data, no response.
-#Endo: does the participant have endocrinology data
-#-	.00 = No, 1.00 = yes 
-unique(Metals$endo)
-#These are correct here.
-#EMR
-#-	0= No, 1= Yes
+#Dm_age -	“.” = missing data, no response.
+#Endo: does the participant have endocrinology data -	.00 = No, 1.00 = yes 
+#EMR -	0= No, 1= Yes
 
 #Generally "." is missing data
-Metals2 <- Metals %>% 
-  select(-c(Date, DOB))
+Metals2 <- subset(Metals, select=-c(Date, DOB))
 
 Metals2[Metals2=="."] <- NA
 
-Metals3 <- Metals %>% 
-  select(c(Date, DOB))
+Metals3 <- subset(Metals, select=c(Date, DOB))
 
 Metals <- cbind(Metals2, Metals3)
 
 remove(Metals2)
 remove(Metals3)
-#Participant C1045 was 9/4/2018
+#Participant C1045 was 9/4/2018. This is obviously a mistake. Need to ask Mark to see if he can find the correct birthdate elsewhere.
 
 Metals$Date[Metals$Date=="2013-01-04"] <- "2018-09-04"
+
+Metals <- Metals %>%
+  filter(!is.na(DOB_year))
+
+#Perchlorate Data
+Creatinine$`Sample ID` <- gsub("YRMC-", "Y1", Creatinine$`Sample ID`)
+Perchlorate$`Sample ID` <- gsub("YRMC-", "Y1", Perchlorate$`Sample ID`)
+
+Urine_Perch_Creat <- merge(Creatinine, Perchlorate, by=c("Sample ID"), all = T)
+Urine_Perch_Creat <- as.data.frame(Urine_Perch_Creat)
+Urine_Perch_Creat <- Urine_Perch_Creat[, c("Sample ID", "Result.x", "LOD.x", "Result.y", "LOD.y")]
+unique(Creatinine$Units)
+unique(Perchlorate$Units)
+colnames(Urine_Perch_Creat) <- c("Sample_ID", "Result_C_mg_dL", "LOD_C", "Result_P_ng_mL", "LOD_P")
+
+Urine_Perch_Creat$Result_C[Urine_Perch_Creat$Result_C=="NR"] <- NA
+
+Urine_Perch_Creat$Site <- substr(as.character(Urine_Perch_Creat$Sample_ID),7,7)
+Urine_Perch_Creat$ID <- substr(as.character(Urine_Perch_Creat$Sample_ID),7,11)
+
+#Of the 297 observations, 2 have missing values for both creatinine and perchlorate, and 1 has missing value for creatinine but measured values for perchlorate, such that 294 observations are paired with measured values.
+
+#I will remove the folks that don't have any data for creatinine or perchlorate since they aren't particularly helpful
+Urine_Perch_Creat <- Urine_Perch_Creat %>% 
+  filter(!(is.na(Result_C) & is.na(Result_P_ng_mL)))
 ```
 
 ## Wondering About Recodes
 ```{r recoded}
+
 Metals[grepl('recode', colnames(Metals))]
 
-#It looks like Jonathan Credo (who did the recodes) maybe tried to create dummy variables from the categorical variables?
+#It looks like Jonathan Credo (who did the recodes?) maybe tried to create dummy variables from the categorical variables?
 #Unfortunately they are not adding up very well (and lots of NAs).
 
 #There are also thyroid variables with the suffix _D that look like they are dummy variables.
 Metals[grepl('_D', colnames(Metals))]
 #These ones include "don't know" and "prefer not to answer" in the "No" category.
+
+
 ```
 
-```{r farmworker}
-#Question from survey: In the last 12 months, Have you worked as a farmer, rancher, or agricultural worker?
-sum(Metals$Farmer==1,na.rm = T)
+### Metal Concentrations
+```{r metals}
+#The initial columns are for Mn55, Cu65, Cd111, Hg202, Pb208, and U238.
+#There are additional columns with metal concentrations for arsenic and iron (As_75 and Fe_57) that come later after the hormone level columns.
+#The differences in naming format make me think these were analyzed either at different times or on different machines or with different techniques, perhaps? 
+#Going to make things uniform for posterity.
+colnames(Metals)[colnames(Metals) == "As_75"] <- "As75"
+colnames(Metals)[colnames(Metals) == "Fe_57"] <- "Fe57"
+
+#Because of the severely high rate of missing data (or negative concentration values) for both As75 and Fe57, we will drop these from our analyses. The data cannot be trusted! 
+```
+
+```{r combined}
+#Combining Metal and Perchlorate Data for single dataframe
+All_Data <- merge(Metals, Urine_Perch_Creat, by = "ID", all = TRUE)
+All_Data <- All_Data %>% 
+  filter(!is.na(DOB_year))
+
+test <- All_Data[,c("ID","Mn55",  "Cu65", "Cd111", "Hg202", "Pb206", "Pb207", "PB208", "U238", "Result_C_mg_dL", "Result_P_ng_mL")]
+sum(is.na(test$Mn55) & is.na(test$Cu65) & is.na(test$Cd111) & is.na(test$Hg202) & is.na(test$Pb206) & is.na(test$Pb207) & is.na(test$PB208) & is.na(test$U238) & is.na(test$Result_C_mg_dL) & is.na(test$Result_P_ng_mL))
+
+test <- All_Data[,c("ID","Mn55",  "Cu65", "Cd111", "Hg202", "Pb206", "Pb207", "PB208", "U238", "Result_C_mg_dL", "Result_P_ng_mL", "thyroid_prob", "hypothyroid", "emr_thyroid_problem", "emr_hypothyroidism")]
+sum(is.na(test$Mn55) & is.na(test$Cu65) & is.na(test$Cd111) & is.na(test$Hg202) & is.na(test$Pb206) & is.na(test$Pb207) & is.na(test$PB208) & is.na(test$U238) & is.na(test$Result_C_mg_dL) & is.na(test$Result_P_ng_mL) & is.na(test$thyroid_prob) & is.na(test$hypothyroid) & is.na(test$emr_thyroid_problem) & is.na(test$emr_hypothyroidism))
+#There are 24 people who do not have any data for hair metals nor perchlorate information.
+#There are 2 people who do not have metal, perchlorate, or thyroid information.
+remove(test)
+
+#Fixing column names and missing site data
+All_Data$Site.x[All_Data$ID == 'C1050'] <- 1
+All_Data$Site.x[All_Data$ID == 'C1059'] <- 1
+All_Data$Site.x[All_Data$ID == 'R1048'] <- 2
+All_Data$Site.x[All_Data$ID == 'R1083'] <- 2
+
+colnames(All_Data)[which(names(All_Data) == "Site.x")] <- "Site"
+All_Data <- subset (All_Data, select = -Site.y)
+```
+
+```{r emr_fixins}
+All_Data$emr_thyroid_problem_fromothercolumns <- ifelse(All_Data$emr_thyroid_cancer==1|
+                                                          All_Data$emr_hyperthyroidism==1|
+                                                          All_Data$emr_hypothyroidism==1|
+                                                          All_Data$emr_goiter==1|
+                                                          All_Data$emr_thyroid_problem==1, 1,
+                                                        ifelse(All_Data$emr_thyroid_cancer==0&
+                                                          All_Data$emr_hyperthyroidism==0&
+                                                          All_Data$emr_hypothyroidism==0&
+                                                          All_Data$emr_goiter==0&
+                                                          All_Data$emr_thyroid_problem==0,0,
+                                                          NA))
+```
+
+```{r self_report_fixins}
+#1=Yes
+#2=No
+#3=Don't know
+#4=Refused
+#NA=Missing
+
+#The original coding for this variable looks like it includes "Don't know" and "Refused" options as "No" responses. I do not believe this should be the case, since these responses don't actually give us any information about the presence or absence of the diseases. So I am going to update these values here.
+
+All_Data$thyroid_prob_D <- ifelse(All_Data$thyroid_prob==1, 1,
+                                  ifelse(All_Data$thyroid_prob==2, 0,
+                                         NA))
+
+All_Data$Hyper_D <- ifelse(All_Data$hyperthyroid==1, 1,
+                           ifelse(All_Data$hyperthyroid==2, 0,
+                                  NA))
+
+All_Data$Hypo_D <- ifelse(All_Data$hypothyroid==1, 1,
+                          ifelse(All_Data$hypothyroid==2, 0,
+                                 NA))
+
+All_Data$Thyroid_cancer_D <- ifelse(All_Data$thyroid_cancer==1, 1,
+                                    ifelse(All_Data$thyroid_cancer==2, 0,
+                                           NA))
+
+All_Data$Goiter_D <- ifelse(All_Data$goiter==1, 1,
+                            ifelse(All_Data$goiter==2, 0,
+                                   NA))
+
+All_Data$any_thyroid_problem_dummy <- ifelse(All_Data$thyroid_prob_D==1 | 
+                                               All_Data$Hyper_D==1 | 
+                                               All_Data$Hypo_D==1 | 
+                                               All_Data$Thyroid_cancer_D==1 | 
+                                               All_Data$Goiter_D==1, 1,
+                                                        ifelse(All_Data$thyroid_prob_D==0 &
+                                                                 All_Data$Hyper_D==0 & 
+                                                                 All_Data$Hypo_D==0 & 
+                                                                 All_Data$Thyroid_cancer_D==0 & 
+                                                                 All_Data$Goiter_D==0, 0,
+                                                               NA))
+```
+
+```{r identifiers}
+#Oops, removing identifiers
+
+All_Data <- subset(All_Data, select = -c(anxiety,depression,bipolar,schizo,ptsd,adhd,emr_anxiety,emr_depression,emr_bipolar,emr_schizophrenia,emr_ptsd,emr_adhd_add,sc,emr_sud,emr_asd,anxiety_recode,depression_recode,schizo_recode,bipolar_recode,ptsd_recode,adhd_recode,sud, Yuma_address, address, latitude, longitude, attention_disorder)) 
+```
+
+```{r occupation}
+#https://www.cdc.gov/niosh/topics/coding/collect.html
+#https://www.bls.gov/soc/2018/home.htm
+#https://www.bls.gov/soc/2018/soc_2018_class_and_coding_structure.pdf
+#https://www.bls.gov/soc/2018/soc_2018_direct_match_title_file.pdf
+
+
+#Major Occupational Classification based on 2018 U.S. Bureau of Labor Statistics Standard Occupational Classification (SOC) and Coding Structure
+
+#11 Management 
+#13 Business and Financial Operations 
+#15 Computer and Mathematical 
+#17 Architecture and Engineering 
+#19 Life, Physical, and Social Science 
+#21 Community and Social Service 
+#23 Legal 
+#25 Educational Instruction and Library 
+#27 Arts, Design, Entertainment, Sports, and Media 
+#29 Healthcare Practitioners and Technical 
+#31 Healthcare Support 
+#33 Protective Service 
+#35 Food Preparation and Serving Related 
+#37 Building and Grounds Cleaning and Maintenance 
+#39 Personal Care and Service 
+#41 Sales and Related 
+#43 Office and Administrative Support 
+#45 Farming, Fishing, and Forestry 
+#47 Construction and Extraction 
+#49 Installation, Maintenance, and Repair 
+#51 Production 
+#53 Transportation and Material Moving 
+#55 Military Specific 
+
+unique(All_Data$Occupation)
+
+
+occswitch <- function(x){
+  switch(as.character(x),
+         'NA' = NA,
+         'Farmworker' = '45' ,
+         'Community Health Worker' = '21' ,
+         'Loan Specialist' = '43' ,
+         'Tax prepared' = '13' ,
+         'House Wife' = '0' ,
+         'Health Promoter' = '21' ,
+         'Maintenance' = '37' ,
+         'Student rigth now' = '0' ,
+         'Promotora de salud' = '21' ,
+         'Lavor' = '45' ,
+         'House wife' = '0' ,
+         'Homemaker' = '0' ,
+         'Telemarketing' = '41' ,
+         'Ama de casa' = '0' ,
+         'Campo' = '45' ,
+         'Field worker' = '45' ,
+         'Estilista' = '39' ,
+         'Secretary' = '43' ,
+         'Supervisor' = '11' ,
+         'Cooler' = NA ,
+         'Home maker' = '0' ,
+         'Construcction' = '47' ,
+         'Jubilado' = '0' ,
+         'Coordinador de familia' = '0' ,
+         'Hogar' = '0' ,
+         'Directora de operaciones de campesinos' = '11' ,
+         'Sanitacion' = '37' ,
+         'Trabajadora del campo' = '45' ,
+         'Ayudante de maestra' = '25' ,
+         'Studiante' = '0' ,
+         'Front desk' = '43' ,
+         'Ninera' = '39' ,
+         'Trabajo propio' = NA ,
+         'Libreria' = '25' ,
+         'Surgery scheduler' = '43' ,
+         'Diagnostic scheduler' = '43' ,
+         'Phlebotomy' = '31' ,
+         'Maestra' = '25' ,
+         'Trabajo en empaque' = '51' ,
+         'Quality assurwnce' = '51' ,
+         'Adminitracion' = '43' ,
+         'Labor' = '45' ,
+         'Retirada' = '0' ,
+         'Retirred' = '0' ,
+         'Bookkeeper payroll specialist' = '43' ,
+         'Operator/Dispatcher' = '43' ,
+         'Cna Caregiver' = '31' ,
+         'Not sure' = '0' ,
+         'Education' = '25' ,
+         'Ama de casa.' = '0' ,
+         'House keeping' = '0' ,
+         'Obrero' = '45' ,
+         'Desabilitada' = '0' ,
+         'Bookkeeper' = '43' ,
+         'Receptionist' = '43' ,
+         'Window tinting' = '49' ,
+         'Teacher' = '25' ,
+         'Student supervisor' = '25' ,
+         'Family nurse practitioner' = '29' ,
+         'Medical Assistant' = '31' ,
+         'Nurses aide' = '31' ,
+         'It' = '15' ,
+         'Ambulatory Scheduling Specialist' = '43' ,
+         'Ambulatory Scheduler' = '43' ,
+         'Retail assistant' = '41' ,
+         'Medical clerk' = '43' ,
+         'Marine corps radar technician' = '55' ,
+         'Patient access coordinator' = '43' ,
+         'ESS TECH @ YESD' = '25' ,
+         'Retired art teacher' = '0' ,
+         'Customer service' = '43' ,
+         'Registered medical assistant' = '31' ,
+         'Registered nurse' = '29' ,
+         'Administrative assistant' = '43' ,
+         'Department of the Army Civilian' = '55' ,
+         'Disabled' = '0' ,
+         'N/A' = NA ,
+         'Health facilitator' = '21' ,
+         'Housing assistent' = '43' ,
+         'Program Coordinator' = '11' ,
+         'Public adminitrator' = '11' ,
+         'Health promoter' = '21' ,
+         'Accountant assistant' = '43' ,
+         'Housewife' = '0' ,
+         'Student' = '0' ,
+         'Migrant advisor' = '21' ,
+         'Logistics / stakcer' = '13' ,
+         'Retired' = '0' ,
+         'Social worker' = '21' ,
+         'Contruction' = '47' ,
+         'NA' = NA ,
+         'Not employed' = '0' ,
+         'Farm worker' = '45' ,
+         'Janitor' = '37' ,
+         'None' = NA ,
+         'Sanitation' = '37' ,
+         'Construction/farmworker' = '47' ,
+         'Taxi driver' = '53' ,
+         'Retirado' = '0' ,
+         'Cajera' = '41' ,
+         'Medical billing' = '29' ,
+         'Asistente en home gruop' = '31' ,
+         'Trabajador del campo' = '45' ,
+         'En casa' = '0' ,
+         'Sin trabajo' = '0' ,
+         'Securty' = '33' ,
+         'Health Promter' = '21' ,
+         'Housekeeping' = '37' ,
+         'Ama de cada' = '0' ,
+         'Outpatients' = NA ,
+         'Farmacista' = '29' ,
+         'Promotora' = '21' ,
+         'Mantenimiento' = '49' ,
+         'Truck Driver' = '53' ,
+         'Referrals' = 'NA' ,
+         'Laboratorista' = NA ,
+         'Roofer' = '47' ,
+         'Estuduante' = '0' ,
+         'Medical assistant' = '31' ,
+         'Medical asistant' = '31' ,
+         'Homemaker\\student' = '0' ,
+         'Detention' = '33' ,
+         'Unemployed' = '0' ,
+         'Electrician' = '49' ,
+         'Asst operator' = '13' ,
+         'Supply' = NA ,
+         'Archaeologist' = '19' ,
+         'Clerk' = '41' ,
+         'Home Maker' = '0' ,
+         'Pharmacy tech' = '29' ,
+         'Para Professional' = '25' ,
+         'Account clerk' = '43' ,
+         'Ventas' = '41' ,
+         'Forklift driver' = '53' ,
+         'Lawn serever' = '37' ,
+         'Nurse practitioner' = '29' ,
+         'Defense Contractor' = '55' ,
+         'Ambulatory scheduling specialist' = '43' ,
+         'MA' = NA ,
+         'Ambulatory schededuling Specialist' = '43' ,
+         'Ambulatory scheduler and referral clerk' = '43' ,
+         'Health office substitute' = '43' ,
+         'Student researcher' = '0' ,
+         'Patient Access Representative' = '43' ,
+         'N\\A' = NA ,
+         'Ambulatory Scheduling' = '43' ,
+         'Correction officer' = '33' ,
+         'Cook' = '35' ,
+         'RN' = '29' ,
+         'Credit analyst' = '13' ,
+         'Trabajo en El campo' = '45' ,
+         'Phlebotomist' = '31' ,
+         'Accounting Assistant' = '43',
+         'Package Worker' = '53')
+}
+
+Occupation_SOC <- sapply(All_Data$Occupation, occswitch)
+Occupation_SOC <- unlist(Occupation_SOC)
+All_Data$Occupation_SOC <- Occupation_SOC
+
+
+#Smoking factors
+smokeswitch <- function(x){
+  switch(as.character(x),
+         "NA"=NA,
+         "Former smoker"=1,
+         "Current every day smoker"=3,
+         "former smoker"=1,
+         "Light tobacco smoker"=2,
+         "current someday smoker"=2)
+  
+}
+
+tobacco_history_fact <- sapply(All_Data$tobacco_history, smokeswitch)
+All_Data$tobacco_history_fact <- unlist(tobacco_history_fact)
+
+library(fastDummies)
+
+Occ_Dummies <- dummy_cols(All_Data$Occupation_SOC)
+Occ_Dummies <- subset(Occ_Dummies, select=-c(.data_NA.1))
+colnames(Occ_Dummies) <- c("Occupation_SOC","Occ_NotWorking","Occ_Management", "Occ_Busn_Fin", "Occ_Comp_Math", "Occ_PhysSci", "Occ_SoclSrv", "Occ_Edu", "Occ_Healthcare", "Occ_HealthSupp", "Occ_ProtSrvc", "Occ_FoodPrep", "Occ_GroundsMaint", "Occ_PersnlCare", "Occ_Sales", "Occ_AdminSupp", "Occ_Farming", "Occ_Constr", "Occ_InstallRepair", "Occ_Production", "Occ_Transp", "Occ_Military", "Occ_NA")
+Occ_Dummies <- subset(Occ_Dummies, select = -c(Occupation_SOC))
+
+All_Data <- cbind(All_Data, Occ_Dummies)
+
+Smoke_Dummies <- dummy_cols(All_Data$tobacco_history_fact)
+colnames(Smoke_Dummies) <- c("tobacco_history_fact", "Smoke_Former", "Smoke_Occasional", "Smoke_Daily", "Smoke_NA")
+Smoke_Dummies <- subset(Smoke_Dummies, select = -c(tobacco_history_fact))
+
+All_Data <- cbind(All_Data, Smoke_Dummies)
+
+All_Data$Below_Pov <- ifelse(All_Data$Num_in_household==1 & All_Data$Income<=3, 1, 
+                             ifelse(All_Data$Num_in_household==2 & All_Data$Income<=4, 1,
+                                    ifelse(All_Data$Num_in_household==3 & All_Data$Income<=5, 1,
+                                           ifelse(All_Data$Num_in_household==4 & All_Data$Income<=5, 1,
+                                                  ifelse(All_Data$Num_in_household==5 & All_Data$Income<=5, 1,
+                                                         ifelse(All_Data$Num_in_household==6 & All_Data$Income<=6, 1,
+                                                                ifelse(All_Data$Num_in_household==7 & All_Data$Income<=6, 1,
+                                                                       ifelse(All_Data$Num_in_household>=8 & All_Data$Income<=7, 1,
+                               NA))))))))
+
+
+All_Data$Race <- ifelse(!is.na(All_Data$Race_ai_an==1), 1, 
+                        ifelse(!is.na(All_Data$Race_asian==1), 2, 
+                               ifelse(!is.na(All_Data$Race_black==1), 3, 
+                                      ifelse(!is.na(All_Data$Race_pac_isl==1), 4, 
+                                             ifelse(!is.na(All_Data$Race_white==1), 5,
+                                                    ifelse(!is.na(All_Data$Race_other==1), 6,
+                                                           ifelse(!is.na(All_Data$Race_dk==1), 7,
+                                                                  ifelse(!is.na(All_Data$Race_refuse==1), 8, NA))))))))
+
+All_Data$Smoke_Former <- as.numeric(All_Data$Smoke_Former)
+All_Data$Smoke_Occasional <- as.numeric(All_Data$Smoke_Occasional)
+All_Data$Smoke_Daily <- as.numeric(All_Data$Smoke_Daily)
+
+All_Data$Smoking_Status <- ifelse(!is.na(All_Data$Smoke_Former) & All_Data$Smoke_Former == 1 &
+                                   !is.na(All_Data$Smoke_Occasional) & All_Data$Smoke_Occasional == 0 &
+                                   !is.na(All_Data$Smoke_Daily) & All_Data$Smoke_Daily == 0, 1,
+                                  
+                                  ifelse(!is.na(All_Data$Smoke_Former) & All_Data$Smoke_Former == 0 &
+                                         !is.na(All_Data$Smoke_Occasional) & All_Data$Smoke_Occasional == 1 &
+                                         !is.na(All_Data$Smoke_Daily) & All_Data$Smoke_Daily == 0, 2,
+                                  
+                                  ifelse(!is.na(All_Data$Smoke_Former) & All_Data$Smoke_Former == 0 &
+                                         !is.na(All_Data$Smoke_Occasional) & All_Data$Smoke_Occasional == 0 &
+                                         !is.na(All_Data$Smoke_Daily) & All_Data$Smoke_Daily == 1, 3, NA)))
+
+
+
+All_Data$thyroid_med[is.na(All_Data$thyroid_med)] <- 0 #assuming that anyone who doesn't have meds listed is not taking them.
+All_Data$tsh_med[is.na(All_Data$tsh_med)] <- 0
+All_Data$free_t4_med[is.na(All_Data$free_t4_med)] <- 0
+All_Data$free_t3_med[is.na(All_Data$free_t3_med)] <- 0
+All_Data$total_t4_med[is.na(All_Data$total_t4_med)] <- 0
+All_Data$total_t3_med[is.na(All_Data$total_t3_med)] <- 0
+
+#Creating a column that combines the different drinking water sources for home/cooking/coffee/work.
+#Water 1: City
+#Water 2: Well
+#Water 3: Bottled
+#Water 4: Other
+
+#New column: 
+#Water 1: City
+#Water 2: Well
+#Water 3: Bottled
+#Water 4: Other
+#Water 5: Mixed Sources
+
+All_Data$Water_all <- ifelse(All_Data$Water_coffee==All_Data$Water_cooking & All_Data$Water_coffee==All_Data$Water_home & All_Data$Water_coffee==All_Data$Water_work, All_Data$Water_coffee,
+                             ifelse(All_Data$Water_coffee!=All_Data$Water_cooking | All_Data$Water_coffee!=All_Data$Water_home | All_Data$Water_coffee!=All_Data$Water_work, 5, NA))
 
 ```
