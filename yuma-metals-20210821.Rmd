@@ -6,26 +6,31 @@ output:
 html_document:
 self_contained: yes
 ---
+#### Edited by Jenna Honan 2023-2024
+
 
 # Overview
-Explore the distributional properties of (hair?) metals concentrations from
-Yuma, AZ.  Also, use Rmd file to illustrate use of R and markdown for
-computationally reproducible research.
+Explore the distributional properties of hair metals concentrations from
+Yuma, AZ.
+
+### Changes since 2021-08-28
+1. All changes completed by JKH 
+2. Instead of importing dataset from excel, will be using the processed/cleaned dataframe from Data_Clean.Rmd and Demographics.Rmd ("All_Data")
+3. I imputed missing metals values with LOD/sqrt(2) via code instead of in excel, since errors are more likely when done manually (as Jonathan Credo had originally done). This was done in Data_Clean.Rmd.
 
 ### Changes since 2021-08-21
-1. Values missing all metals are true missing -- insufficient sample.
+1. Values missing all metals are true missing -- insufficient sample
 2. Values with missing Hg are also true missing (about 89 of these)
 - fit PCA excluding missing Hg
-- 2nd fit using imputed Hg from other metals data.
-3. drop sample R1108 - missing Cu value - not identified in spectrum. This was included in a batch of
-   samples that failed QA/QC check 
+- 2nd fit using imputed Hg from other metals data
+3. Drop sample R1108 - missing Cu value - not identified in spectrum (this was included in a batch of samples that failed QA/QC check) 
 
 ### Major changes since 2020-07-03 version
 1. Updated data from Jonathan Credo - using 2021-08-23 version - sheet 3
-2. Many of the NAs are true missing -
+2. Many of the NAs are true missing
 3. Jonathan re-coded BDL values to DL/sqrt(2)
-4. Re-run the analysis.
-5. Produce a new data set with robust PCA components for Jonathan's use.
+4. Re-run the analysis
+5. Produce a new data set with robust PCA components for Jenna Honan's use
 
 ### Major changes since 2020-06-23 version
 1. Omit observations where most metals are unmeasured 
@@ -33,9 +38,7 @@ computationally reproducible research.
 3. What to do about Hg NAs?
 
 ### Takeaway
-Standard and robust PCA yield generally similar results.  There are enough
-differences, however, that the robust method would be my first choice for
-data summarization.
+Standard and robust PCA yield generally similar results. There are enough differences, however, that the robust method would be my first choice for data summarization. - Dean Billheimer
 
 # R Stuff
 ## Set-up Environment and Read Data
@@ -43,28 +46,39 @@ data summarization.
 library(readxl)
 library(tidyverse)
 library(ggplot2)
+library(dplyr)
+library(ggpubr)
+library(gridExtra)
+library(ggforce)
+library(scales)
 
 #setwd
 setwd("~/Desktop/Yuma Project/Yuma - R Project/")
 
 ## read data
 ##filename <- c("Yuma Metals Project - EMR 19Jun20.xlsx")
-filename <- c("Yuma Metals Project_EMR_Editted 23Aug2021 mental health & ID removed.xlsx") ## new data set
-tmp <- read_excel(filename, sheet=3)
-dim(tmp) ## 330 222 ##New data set has dim 330, 199 (after removal of identifiers and mental health data) #Also Pb208 is already the only one that is left of the lead columns
- names(tmp)
+##filename <- c("Yuma Metals Project_EMR_Editted 23Aug2021 mental health & ID removed.xlsx") ## new data set
+##tmp <- read_excel(filename, sheet=3)
+tmp <- data.frame(All_Data)
+dim(tmp) ##New data set has dim 330, 239 (after removal of identifiers and mental health data) 
+names(tmp)
  ##  [1] "ID"                        "Mn55"                     
  ##  [3] "Cu65"                      "Cd111"                    
  ##  [5] "Hg202"                     "Pb206"                    
- ##  [7] "Pb207"                     "PB208"                    
+ ##  [7] "Pb207"                     "Pb208"                    
  ##  [9] "U238"                      "Site"                     
  ## [11] "Date"                      "Gender"                   
 
-## head(tmp)
+head(tmp)
 
 ## keep only ID, metals and Site, cast to data frame
-metals <- data.frame(tmp[,c(1:8)])
+metals <- data.frame(tmp[,c(1:10)])
+metals <- metals[, !(names(metals) %in% c("Pb206", "Pb207"))]
+
 names(metals)  ## omitted Pb206 and Pb207
+
+metals_with_AsFe <- data.frame(tmp[,c(1:10, 171:172)])
+sum(!is.na(metals_with_AsFe$Mn55)|!is.na(metals_with_AsFe$Cu65)|!is.na(metals_with_AsFe$Cd111)|!is.na(metals_with_AsFe$Hg202)|!is.na(metals_with_AsFe$Pb208)|!is.na(metals_with_AsFe$As75)|!is.na(metals_with_AsFe$Fe57))
 ## metals check format
 ```
 
@@ -74,68 +88,1005 @@ The summary below shows there are 123 NAs for nearly all of the metals. Hg202 is
 the exception with 212 NAs.
 
 Data exploration shows that the NA pattern is consistent across the metals. If
-one is missing, all are missing.
+one is missing, all are missing. 
 
 There are fewer measures at site 1.  More missing values at site 1 (51/78) and
 at site 3 (48/126) compared with site 2 (24/126)
 
+*Note* - When measured value was BDL, the values were previously replaced with the LOD/sqrt(2) in the Data_Clean.Rmd file.
+
 ```{r, checks}
 ## Initial summary
+#The IDs below did not have an associated health survey. C1104, R1048, R1083, and Y1008 had data for metals in hair, while the others were completely missing. Data were not fully cleaned before given to Dr. Billheimer. -JKH
+#metals <- metals %>% 
+#  dplyr::filter(ID!="Y1008" & ID!="Y1015" & ID!="R1048" & ID!="R1083" & ID!="C1050" & ID!="C1059" & ID!="C1104")
+
 summary(metals)
+summary(metals_with_AsFe)
 
 ## Number of Observations per Site
-table(metals$Site) ## 78 126 and 126.  Fewer at site 1
+table(metals$Site) ## 78 126 and 126.  Fewer at site 1 - This is sliiiightly inaccurate, see notes at top of section. - JKH
 
 ## Number of values > BDL by Site
 table(metals$Site, !is.na(metals[,2])) ## Observation indicator by site
+
+sum(!is.na(metals_with_AsFe$As75)) #47
+sum(!is.na(metals_with_AsFe$Fe57)) #20
 ```
 
 
+```{r other}
+#Added by JKH
+
+#Percents above guidelines after LOD/sqrt(2) replacement
+metals %>% 
+  summarise(Cd_Above=(sum(Cd111>0.1, na.rm = T)/211)*100,
+            Cu_Above=(sum(Cu65>10, na.rm = T)/211)*100,
+            Hg_Above=(sum(Hg202>1, na.rm = T)/118)*100,
+            Mn_Above=(sum(Mn55>1, na.rm = T)/211)*100,
+            Pb_Above=(sum(Pb208>10, na.rm = T)/211)*100,
+            U_Above=(sum(U238>0.1, na.rm = T)/211)*100)
+
+Cadmium_Guideline <- ggplot(data=metals, aes(y=Cd111, x=0))+
+  geom_violin()+
+  geom_hline(aes(yintercept = 0.1, color="darkred"))+
+  scale_color_manual(values = c("darkred"),
+                     labels = c("0.1 ug/g"))+ 
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank(),
+        plot.title = element_text(hjust = 0.5), 
+        legend.position = "bottom",
+        legend.justification = "center", 
+        legend.title = element_blank()) + 
+  xlab("")+
+  ylab("Concentration (ug/g)")+
+  ggtitle("Cadmium")
+
+sum(!is.na(metals$Cd111))
+
+Copper_Guideline <- ggplot(data=metals, aes(y=Cu65, x=0))+
+  geom_violin()+
+  geom_hline(aes(yintercept = 10, color="darkred"))+
+  scale_color_manual(values = c("darkred"),
+                     labels = c("10.0 ug/g"))+ 
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank(),
+        plot.title = element_text(hjust = 0.5), 
+        legend.position = "bottom",
+        legend.justification = "center", 
+        legend.title = element_blank()) + 
+  xlab("")+
+  ylab("")+
+  ggtitle("Copper")
+
+sum(!is.na(metals$Cu65))
+
+Lead_Guideline <- ggplot(data=metals, aes(y=Pb208, x=0))+
+  geom_violin()+
+  geom_hline(aes(yintercept = 10, color="darkred"))+
+  scale_color_manual(values = c("darkred"),
+                     labels = c("10.0 ug/g"))+ 
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank(),
+        plot.title = element_text(hjust = 0.5), 
+        legend.position = "bottom",
+        legend.justification = "center", 
+        legend.title = element_blank()) + 
+  xlab("")+
+  ylab("")+
+  ggtitle("Lead")
+
+sum(!is.na(metals$Pb208))
+
+Manganese_Guideline <- ggplot(data=metals, aes(y=Mn55, x=0))+
+  geom_violin()+
+  geom_hline(aes(yintercept = 6, color="darkred"))+
+  scale_color_manual(values = c("darkred"),
+                     labels = c("6.0 ug/g"))+ 
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank(),
+        plot.title = element_text(hjust = 0.5), 
+        legend.position = "bottom",
+        legend.justification = "center", 
+        legend.title = element_blank()) + 
+  xlab("")+
+  ylab("")+
+  ggtitle("Manganese")
+
+sum(!is.na(metals$Mn55))
+
+Mercury_Guideline <- ggplot(data=metals, aes(y=Hg202, x=0))+
+  geom_violin()+
+  geom_hline(aes(yintercept = 4.7, color="darkred"))+
+  scale_color_manual(values = c("darkred"),
+                     labels = c("4.7 ug/g"))+ 
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank(),
+        plot.title = element_text(hjust = 0.5), 
+        legend.position = "bottom",
+        legend.justification = "center", 
+        legend.title = element_blank()) + 
+  xlab("")+
+  ylab("")+
+  ggtitle("Mercury")
+
+sum(!is.na(metals$Hg202))
+
+Uranium_Guideline <- ggplot(data=metals, aes(y=U238, x=0))+
+  geom_violin()+
+  geom_hline(aes(yintercept = 0.18, color="darkred"))+ #https://link.springer.com/article/10.1023/A:1016031726512 (max value of unexposed pop.)
+  scale_color_manual(values = c("darkred"),
+                     labels = c("0.18 ug/g"))+ 
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank(),
+        plot.title = element_text(hjust = 0.5), 
+        legend.position = "bottom",
+        legend.justification = "center", 
+        legend.title = element_blank()) + 
+  xlab("")+
+  ylab("")+
+  ggtitle("Uranium")
+
+sum(!is.na(metals$U238))
+
+png("Metals_and_Guidelines.png", width=5000, height=1500, res=300)
+ggarrange(Cadmium_Guideline, Copper_Guideline, Lead_Guideline, Manganese_Guideline, Mercury_Guideline, Uranium_Guideline, nrow = 1)
+dev.off()
+
+#Round 2 with Log Transformations
+percentile_Cd_25 <- quantile(log10(metals$Cd111), probs = 0.25, na.rm = TRUE)
+percentile_Cd_50 <- quantile(log10(metals$Cd111), probs = 0.50, na.rm = TRUE)
+percentile_Cd_75 <- quantile(log10(metals$Cd111), probs = 0.75, na.rm = TRUE)
+
+Cadmium_Guideline2 <- ggplot(data=metals, aes(y=log10(Cd111), x=0))+
+  geom_violin()+
+  geom_hline(aes(yintercept = log10(0.1)), color="darkred", linetype="solid", size=1.3) +
+  geom_hline(aes(yintercept = percentile_Cd_25), color = "darkgreen", linetype = "dashed") +
+  geom_hline(aes(yintercept = percentile_Cd_50), color = "darkblue", linetype = "dashed") +
+  geom_hline(aes(yintercept = percentile_Cd_75), color = "darkorange", linetype = "dashed") +
+  scale_color_manual(values = c("darkred" = "darkred", "darkgreen" = "darkgreen", "darkblue" = "darkblue", "darkorange" = "darkorange"),
+                     labels = c("0.1 ug/g", "25th","50th","75th"))+ 
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank(),
+        plot.title = element_text(hjust = 0.5), 
+        legend.position = "bottom",
+        legend.justification = "center",
+        legend.direction = "vertical",
+        legend.title = element_blank()) + 
+  xlab("")+
+  ylab("Log10 Concentration")+
+  ggtitle("Cadmium")
+
+
+percentile_Cu_25 <- quantile(log10(metals$Cu65), probs = 0.25, na.rm = TRUE)
+percentile_Cu_50 <- quantile(log10(metals$Cu65), probs = 0.50, na.rm = TRUE)
+percentile_Cu_75 <- quantile(log10(metals$Cu65), probs = 0.75, na.rm = TRUE)
+
+Copper_Guideline2 <- ggplot(data=metals, aes(y=log10(Cu65), x=0))+
+  geom_violin()+
+  geom_hline(aes(yintercept = log10(10)), color="darkred", linetype="solid", size=1.3) +
+  geom_hline(aes(yintercept = percentile_Cu_25), color = "darkgreen", linetype = "dashed") +
+  geom_hline(aes(yintercept = percentile_Cu_50), color = "darkblue", linetype = "dashed") +
+  geom_hline(aes(yintercept = percentile_Cu_75), color = "darkorange", linetype = "dashed") +
+  scale_color_manual(values = c("darkred" = "darkred", "darkgreen" = "darkgreen", "darkblue" = "darkblue", "darkorange" = "darkorange"),
+                     labels = c("10 ug/g", "25th","50th","75th"))+ 
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank(),
+        plot.title = element_text(hjust = 0.5), 
+        legend.position = "bottom",
+        legend.justification = "center", 
+        legend.title = element_blank()) + 
+  xlab("")+
+  ylab("")+
+  ggtitle("Copper")
+
+
+percentile_Pb_25 <- quantile(log10(metals$Pb208), probs = 0.25, na.rm = TRUE)
+percentile_Pb_50 <- quantile(log10(metals$Pb208), probs = 0.50, na.rm = TRUE)
+percentile_Pb_75 <- quantile(log10(metals$Pb208), probs = 0.75, na.rm = TRUE)
+
+Lead_Guideline2 <- ggplot(data=metals, aes(y=log10(Pb208), x=0))+
+  geom_violin()+
+  geom_hline(aes(yintercept = log10(10)), color="darkred", linetype="solid", size=1.3) +
+  geom_hline(aes(yintercept = percentile_Pb_25), color = "darkgreen", linetype = "dashed") +
+  geom_hline(aes(yintercept = percentile_Pb_50), color = "darkblue", linetype = "dashed") +
+  geom_hline(aes(yintercept = percentile_Pb_75), color = "darkorange", linetype = "dashed") +
+  scale_color_manual(values = c("darkred" = "darkred", "darkgreen" = "darkgreen", "darkblue" = "darkblue", "darkorange" = "darkorange"),
+                     labels = c("10 ug/g", "25th","50th","75th"))+  
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank(),
+        plot.title = element_text(hjust = 0.5), 
+        legend.position = "bottom",
+        legend.justification = "center", 
+        legend.title = element_blank()) + 
+  xlab("")+
+  ylab("")+
+  ggtitle("Lead")
+
+
+percentile_Mn_25 <- quantile(log10(metals$Mn55), probs = 0.25, na.rm = TRUE)
+percentile_Mn_50 <- quantile(log10(metals$Mn55), probs = 0.50, na.rm = TRUE)
+percentile_Mn_75 <- quantile(log10(metals$Mn55), probs = 0.75, na.rm = TRUE)
+
+Manganese_Guideline2 <- ggplot(data=metals, aes(y=log10(Mn55), x=0))+
+  geom_violin()+
+  geom_hline(aes(yintercept = log10(6)), color="darkred", linetype="solid", size=1.3) +
+  geom_hline(aes(yintercept = percentile_Mn_25), color = "darkgreen", linetype = "dashed") +
+  geom_hline(aes(yintercept = percentile_Mn_50), color = "darkblue", linetype = "dashed") +
+  geom_hline(aes(yintercept = percentile_Mn_75), color = "darkorange", linetype = "dashed") +
+  scale_color_manual(values = c("darkred" = "darkred", "darkgreen" = "darkgreen", "darkblue" = "darkblue", "darkorange" = "darkorange"),
+                     labels = c("6 ug/g", "25th","50th","75th"))+  
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank(),
+        plot.title = element_text(hjust = 0.5), 
+        legend.position = "bottom",
+        legend.justification = "center", 
+        legend.title = element_blank()) + 
+  xlab("")+
+  ylab("")+
+  ggtitle("Manganese")
+
+
+percentile_Hg_25 <- quantile(log10(metals$Hg202), probs = 0.25, na.rm = TRUE)
+percentile_Hg_50 <- quantile(log10(metals$Hg202), probs = 0.50, na.rm = TRUE)
+percentile_Hg_75 <- quantile(log10(metals$Hg202), probs = 0.75, na.rm = TRUE)
+
+Mercury_Guideline2 <- ggplot(data=metals, aes(y=log10(Hg202), x=0))+
+  geom_violin()+
+  geom_hline(aes(yintercept = log10(4.7)), color="darkred", linetype="solid", size=1.3) +
+  geom_hline(aes(yintercept = percentile_Hg_25), color = "darkgreen", linetype = "dashed") +
+  geom_hline(aes(yintercept = percentile_Hg_50), color = "darkblue", linetype = "dashed") +
+  geom_hline(aes(yintercept = percentile_Hg_75), color = "darkorange", linetype = "dashed") +
+  scale_color_manual(values = c("darkred" = "darkred", "darkgreen" = "darkgreen", "darkblue" = "darkblue", "darkorange" = "darkorange"),
+                     labels = c("4.7 ug/g", "25th","50th","75th"))+  
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank(),
+        plot.title = element_text(hjust = 0.5), 
+        legend.position = "bottom",
+        legend.justification = "center", 
+        legend.title = element_blank()) + 
+  xlab("")+
+  ylab("")+
+  ggtitle("Mercury")
+
+
+percentile_U_25 <- quantile(log10(metals$U238), probs = 0.25, na.rm = TRUE)
+percentile_U_50 <- quantile(log10(metals$U238), probs = 0.50, na.rm = TRUE)
+percentile_U_75 <- quantile(log10(metals$U238), probs = 0.75, na.rm = TRUE)
+
+Uranium_Guideline2 <- ggplot(data=metals, aes(y=log10(U238), x=0))+
+  geom_violin()+
+  geom_hline(aes(yintercept = log10(0.18)), color="darkred", linetype="solid", size=1.3) +
+  geom_hline(aes(yintercept = percentile_U_25), color = "darkgreen", linetype = "dashed") +
+  geom_hline(aes(yintercept = percentile_U_50), color = "darkblue", linetype = "dashed") +
+  geom_hline(aes(yintercept = percentile_U_75), color = "darkorange", linetype = "dashed") +
+  scale_color_manual(values = c("darkred" = "darkred", "darkgreen" = "darkgreen", "darkblue" = "darkblue", "darkorange" = "darkorange"),
+                     labels = c("0.18 ug/g", "25th","50th","75th"))+  
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank(),
+        plot.title = element_text(hjust = 0.5), 
+        legend.position = "bottom",
+        legend.justification = "center", 
+        legend.title = element_blank()) + 
+  xlab("")+
+  ylab("")+
+  ggtitle("Uranium")
+
+
+png("Metals_and_Guidelines2.png", width=5000, height=1500, res=300)
+ggarrange(Cadmium_Guideline2, Copper_Guideline2, Lead_Guideline2, Manganese_Guideline2, Mercury_Guideline2, Uranium_Guideline2, nrow = 1)
+dev.off()
+
+Mercury_Guideline_ForLegend <- ggplot(data=metals, aes(y=log10(Hg202), x=0))+
+    geom_violin()+
+    geom_hline(aes(yintercept = log10(4.7), color="Guideline"), linetype="solid", size=1.3) +
+    geom_hline(aes(yintercept = percentile_Hg_25, color = "25th Percentile"), linetype = "dashed") +
+    geom_hline(aes(yintercept = percentile_Hg_50, color = "50th Percentile"), linetype = "dashed") +
+    geom_hline(aes(yintercept = percentile_Hg_75, color = "75th Percentile"), linetype = "dashed") +
+    scale_color_manual(values = c("Guideline" = "darkred", "25th Percentile" = "darkgreen", "50th Percentile" = "darkblue", "75th Percentile" = "darkorange"))+  
+    theme(panel.background = element_rect(fill="#ffffff"),
+          axis.line = element_line(color="#000000"),
+          text = element_text(size = 15),
+          axis.ticks.x = element_blank(),
+          axis.text.x = element_blank(),
+          plot.title = element_text(hjust = 0.5), 
+          legend.position = "bottom",
+          legend.justification = "center",
+          legend.direction = "vertical",
+          legend.title = element_blank()) + 
+    xlab("")+
+    ylab("")+
+    ggtitle("Mercury")
+
+g_legend<-function(a.gplot){
+  tmp <- ggplot_gtable(ggplot_build(a.gplot))
+  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+  legend <- tmp$grobs[[leg]]
+  return(legend)}
+
+mylegend_1<-g_legend(Mercury_Guideline_ForLegend)
+
+png("Metals_and_Guidelines2_WithLegend.png", width=6000, height=1500, res=300)
+grid.arrange(Cadmium_Guideline2, Copper_Guideline2, Lead_Guideline2, Manganese_Guideline2, Mercury_Guideline2, Uranium_Guideline2, mylegend_1, nrow=1)
+dev.off()
+
+```
+
+```{r fig_1_distributions2}
+#Arsenic
+percentile_As_25 <- quantile(log10(All_Data$As75), probs = 0.25, na.rm = TRUE)
+percentile_As_50 <- quantile(log10(All_Data$As75), probs = 0.50, na.rm = TRUE)
+percentile_As_75 <- quantile(log10(All_Data$As75), probs = 0.75, na.rm = TRUE)
+
+Arsenic_Guideline2 <- ggplot(data=All_Data, aes(y=log10(As75), x=0))+
+  geom_violin()+
+  geom_sina(alpha=0.1)+
+  geom_hline(aes(yintercept = log10(1)), color="darkred", linetype="solid", size=1.3) +
+  geom_hline(aes(yintercept = percentile_As_25), color = "darkgreen", linetype = "dashed") +
+  geom_hline(aes(yintercept = percentile_As_50), color = "darkblue", linetype = "dashed") +
+  geom_hline(aes(yintercept = percentile_As_75), color = "darkorange", linetype = "dashed") +
+  scale_color_manual(values = c("darkred" = "darkred", "darkgreen" = "darkgreen", "darkblue" = "darkblue", "darkorange" = "darkorange"),
+                     labels = c("1 ug/g", "25th","50th","75th"))+ 
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank(),
+        plot.title = element_text(hjust = 0.5), 
+        legend.position = "bottom",
+        legend.justification = "center",
+        legend.direction = "vertical",
+        legend.title = element_blank()) + 
+  xlab("")+
+  ylab("Log10 Concentration")+
+  ggtitle("Arsenic")
+
+#Cadmium
+percentile_Cd_25 <- quantile(log10(All_Data$Cd111), probs = 0.25, na.rm = TRUE)
+percentile_Cd_50 <- quantile(log10(All_Data$Cd111), probs = 0.50, na.rm = TRUE)
+percentile_Cd_75 <- quantile(log10(All_Data$Cd111), probs = 0.75, na.rm = TRUE)
+
+Cadmium_Guideline2 <- ggplot(data=All_Data, aes(y=log10(Cd111), x=0))+
+  geom_violin()+
+  geom_sina(alpha=0.1)+
+  geom_hline(aes(yintercept = log10(0.1)), color="darkred", linetype="solid", size=1.3) +
+  geom_hline(aes(yintercept = log10(0.07)), color="darkviolet", linetype="solid", size=1.3) +
+  geom_hline(aes(yintercept = percentile_Cd_25), color = "darkgreen", linetype = "dashed") +
+  geom_hline(aes(yintercept = percentile_Cd_50), color = "darkblue", linetype = "dashed") +
+  geom_hline(aes(yintercept = percentile_Cd_75), color = "darkorange", linetype = "dashed") +
+  scale_color_manual(values = c("darkred" = "darkred", "darkgreen" = "darkgreen", "darkblue" = "darkblue", "darkorange" = "darkorange", "darkviolet" = "darkviolet"),
+                     labels = c("0.1 ug/g", "25th","50th","75th", "0.07 ug/g"))+ 
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank(),
+        plot.title = element_text(hjust = 0.5), 
+        legend.position = "bottom",
+        legend.justification = "center",
+        legend.direction = "vertical",
+        legend.title = element_blank()) + 
+  xlab("")+
+  ylab("Log10 Concentration")+
+  ggtitle("Cadmium")
+
+#Copper
+percentile_Cu_25 <- quantile(log10(All_Data$Cu65), probs = 0.25, na.rm = TRUE)
+percentile_Cu_50 <- quantile(log10(All_Data$Cu65), probs = 0.50, na.rm = TRUE)
+percentile_Cu_75 <- quantile(log10(All_Data$Cu65), probs = 0.75, na.rm = TRUE)
+
+Copper_Guideline2 <- ggplot(data=All_Data, aes(y=log10(Cu65), x=0))+
+  geom_violin()+
+  geom_sina(alpha=0.1)+
+  geom_hline(aes(yintercept = log10(10)), color="darkred", linetype="solid", size=1.3) +
+  geom_hline(aes(yintercept = log10(0.23)), color="darkviolet", linetype="solid", size=1.3) +
+  geom_hline(aes(yintercept = percentile_Cu_25), color = "darkgreen", linetype = "dashed") +
+  geom_hline(aes(yintercept = percentile_Cu_50), color = "darkblue", linetype = "dashed") +
+  geom_hline(aes(yintercept = percentile_Cu_75), color = "darkorange", linetype = "dashed") +
+  scale_color_manual(values = c("darkred" = "darkred", "darkgreen" = "darkgreen", "darkblue" = "darkblue", "darkorange" = "darkorange", "darkviolet" = "darkviolet"),
+                     labels = c("10 ug/g", "25th","50th","75th", "0.23 ug/g"))+ 
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank(),
+        plot.title = element_text(hjust = 0.5), 
+        legend.position = "bottom",
+        legend.justification = "center", 
+        legend.title = element_blank()) + 
+  xlab("")+
+  ylab("")+
+  ggtitle("Copper")
+
+#Iron
+percentile_Fe_25 <- quantile(log10(All_Data$Fe57), probs = 0.25, na.rm = TRUE)
+percentile_Fe_50 <- quantile(log10(All_Data$Fe57), probs = 0.50, na.rm = TRUE)
+percentile_Fe_75 <- quantile(log10(All_Data$Fe57), probs = 0.75, na.rm = TRUE)
+
+Iron_Guideline2 <- ggplot(data=All_Data, aes(y=log10(Fe57), x=0))+
+  geom_violin()+
+  geom_sina(alpha=0.1)+
+  geom_hline(aes(yintercept = log10(10)), color="darkred", linetype="solid", size=1.3) +
+  geom_hline(aes(yintercept = percentile_Fe_25), color = "darkgreen", linetype = "dashed") +
+  geom_hline(aes(yintercept = percentile_Fe_50), color = "darkblue", linetype = "dashed") +
+  geom_hline(aes(yintercept = percentile_Fe_75), color = "darkorange", linetype = "dashed") +
+  scale_color_manual(values = c("darkred" = "darkred", "darkgreen" = "darkgreen", "darkblue" = "darkblue", "darkorange" = "darkorange"),
+                     labels = c("10 ug/g", "25th","50th","75th"))+ 
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank(),
+        plot.title = element_text(hjust = 0.5), 
+        legend.position = "bottom",
+        legend.justification = "center",
+        legend.direction = "vertical",
+        legend.title = element_blank()) + 
+  xlab("")+
+  ylab("")+
+  ggtitle("Iron")
+
+#Lead
+percentile_Pb_25 <- quantile(log10(All_Data$Pb208), probs = 0.25, na.rm = TRUE)
+percentile_Pb_50 <- quantile(log10(All_Data$Pb208), probs = 0.50, na.rm = TRUE)
+percentile_Pb_75 <- quantile(log10(All_Data$Pb208), probs = 0.75, na.rm = TRUE)
+
+Lead_Guideline2 <- ggplot(data=All_Data, aes(y=log10(Pb208), x=0))+
+  geom_violin()+
+  geom_sina(alpha=0.1)+
+  geom_hline(aes(yintercept = log10(10)), color="darkred", linetype="solid", size=1.3) +
+  geom_hline(aes(yintercept = percentile_Pb_25), color = "darkgreen", linetype = "dashed") +
+  geom_hline(aes(yintercept = percentile_Pb_50), color = "darkblue", linetype = "dashed") +
+  geom_hline(aes(yintercept = percentile_Pb_75), color = "darkorange", linetype = "dashed") +
+  scale_color_manual(values = c("darkred" = "darkred", "darkgreen" = "darkgreen", "darkblue" = "darkblue", "darkorange" = "darkorange"),
+                     labels = c("10 ug/g", "25th","50th","75th"))+  
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank(),
+        plot.title = element_text(hjust = 0.5), 
+        legend.position = "bottom",
+        legend.justification = "center", 
+        legend.title = element_blank()) + 
+  xlab("")+
+  ylab("")+
+  ggtitle("Lead")
+
+#Manganese
+percentile_Mn_25 <- quantile(log10(All_Data$Mn55), probs = 0.25, na.rm = TRUE)
+percentile_Mn_50 <- quantile(log10(All_Data$Mn55), probs = 0.50, na.rm = TRUE)
+percentile_Mn_75 <- quantile(log10(All_Data$Mn55), probs = 0.75, na.rm = TRUE)
+
+Manganese_Guideline2 <- ggplot(data=All_Data, aes(y=log10(Mn55), x=0))+
+  geom_violin()+
+  geom_sina(alpha=0.1)+
+  geom_hline(aes(yintercept = log10(6)), color="darkred", linetype="solid", size=1.3) +
+  geom_hline(aes(yintercept = percentile_Mn_25), color = "darkgreen", linetype = "dashed") +
+  geom_hline(aes(yintercept = percentile_Mn_50), color = "darkblue", linetype = "dashed") +
+  geom_hline(aes(yintercept = percentile_Mn_75), color = "darkorange", linetype = "dashed") +
+  scale_color_manual(values = c("darkred" = "darkred", "darkgreen" = "darkgreen", "darkblue" = "darkblue", "darkorange" = "darkorange"),
+                     labels = c("6 ug/g", "25th","50th","75th"))+  
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank(),
+        plot.title = element_text(hjust = 0.5), 
+        legend.position = "bottom",
+        legend.justification = "center", 
+        legend.title = element_blank()) + 
+  xlab("")+
+  ylab("")+
+  ggtitle("Manganese")
+
+#Mercury
+percentile_Hg_25 <- quantile(log10(All_Data$Hg202), probs = 0.25, na.rm = TRUE)
+percentile_Hg_50 <- quantile(log10(All_Data$Hg202), probs = 0.50, na.rm = TRUE)
+percentile_Hg_75 <- quantile(log10(All_Data$Hg202), probs = 0.75, na.rm = TRUE)
+
+Mercury_Guideline2 <- ggplot(data=All_Data, aes(y=log10(Hg202), x=0))+
+  geom_violin()+
+  geom_sina(alpha=0.1)+
+  geom_hline(aes(yintercept = log10(4.7)), color="darkred", linetype="solid", size=1.3) +
+  geom_hline(aes(yintercept = log10(0.01)), color="darkviolet", linetype="solid", size=1.3) +
+  geom_hline(aes(yintercept = percentile_Hg_25), color = "darkgreen", linetype = "dashed") +
+  geom_hline(aes(yintercept = percentile_Hg_50), color = "darkblue", linetype = "dashed") +
+  geom_hline(aes(yintercept = percentile_Hg_75), color = "darkorange", linetype = "dashed") +
+  scale_color_manual(values = c("darkred" = "darkred", "darkgreen" = "darkgreen", "darkblue" = "darkblue", "darkorange" = "darkorange", "darkviolet" = "darkviolet"),
+                     labels = c("4.7 ug/g", "25th","50th","75th", "0.01 ug/g"))+  
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank(),
+        plot.title = element_text(hjust = 0.5), 
+        legend.position = "bottom",
+        legend.justification = "center", 
+        legend.title = element_blank()) + 
+  xlab("")+
+  ylab("")+
+  ggtitle("Mercury")
+
+#Uranium
+percentile_U_25 <- quantile(log10(All_Data$U238), probs = 0.25, na.rm = TRUE)
+percentile_U_50 <- quantile(log10(All_Data$U238), probs = 0.50, na.rm = TRUE)
+percentile_U_75 <- quantile(log10(All_Data$U238), probs = 0.75, na.rm = TRUE)
+
+Uranium_Guideline2 <- ggplot(data=All_Data, aes(y=log10(U238), x=0))+
+  geom_violin()+
+  geom_sina(alpha=0.1)+
+  geom_hline(aes(yintercept = log10(0.18)), color="darkred", linetype="solid", size=1.3) +
+  geom_hline(aes(yintercept = log10(0.05)), color="darkviolet", linetype="solid", size=1.3) +
+  geom_hline(aes(yintercept = percentile_U_25), color = "darkgreen", linetype = "dashed") +
+  geom_hline(aes(yintercept = percentile_U_50), color = "darkblue", linetype = "dashed") +
+  geom_hline(aes(yintercept = percentile_U_75), color = "darkorange", linetype = "dashed") +
+  scale_color_manual(values = c("darkred" = "darkred", "darkgreen" = "darkgreen", "darkblue" = "darkblue", "darkorange" = "darkorange", "darkviolet" = "darkviolet"),
+                     labels = c("0.18 ug/g", "25th","50th","75th", "0.05 ug/g"))+  
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank(),
+        plot.title = element_text(hjust = 0.5), 
+        legend.position = "bottom",
+        legend.justification = "center", 
+        legend.title = element_blank()) + 
+  xlab("")+
+  ylab("")+
+  ggtitle("Uranium")
+
+
+png("All_Data_and_Guidelines3.png", width=5000, height=1500, res=300)
+ggarrange(Arsenic_Guideline2, Cadmium_Guideline2, Copper_Guideline2, Iron_Guideline2, Lead_Guideline2, Manganese_Guideline2, Mercury_Guideline2, Uranium_Guideline2)
+dev.off()
+
+Mercury_Guideline_ForLegend <- ggplot(data=All_Data, aes(y=log10(Hg202), x=0))+
+    geom_violin()+
+    geom_hline(aes(yintercept = log10(4.7), color="Guideline"), linetype="solid", size=1.3) +
+  geom_hline(aes(yintercept = log10(0.01), color="LOD"), linetype="solid", size=1.3) +
+    geom_hline(aes(yintercept = percentile_Hg_25, color = "25th Percentile"), linetype = "dashed") +
+    geom_hline(aes(yintercept = percentile_Hg_50, color = "50th Percentile"), linetype = "dashed") +
+    geom_hline(aes(yintercept = percentile_Hg_75, color = "75th Percentile"), linetype = "dashed") +
+    scale_color_manual(values = c("Guideline" = "darkred", "25th Percentile" = "darkgreen", "50th Percentile" = "darkblue", "75th Percentile" = "darkorange", "LOD" = "darkviolet"))+  
+    theme(panel.background = element_rect(fill="#ffffff"),
+          axis.line = element_line(color="#000000"),
+          text = element_text(size = 15),
+          axis.ticks.x = element_blank(),
+          axis.text.x = element_blank(),
+          plot.title = element_text(hjust = 0.5), 
+          legend.position = "bottom",
+          legend.justification = "center",
+          legend.direction = "vertical",
+          legend.title = element_blank()) + 
+    xlab("")+
+    ylab("")+
+    ggtitle("Mercury")
+
+g_legend<-function(a.gplot){
+  tmp <- ggplot_gtable(ggplot_build(a.gplot))
+  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+  legend <- tmp$grobs[[leg]]
+  return(legend)}
+
+mylegend_1<-g_legend(Mercury_Guideline_ForLegend)
+
+png("All_Data_and_Guidelines3_WithLegend.png", width=6000, height=1500, res=300)
+grid.arrange(Cadmium_Guideline2, Copper_Guideline2, Iron_Guideline2, Lead_Guideline2, Manganese_Guideline2, Mercury_Guideline2, Uranium_Guideline2, mylegend_1, nrow=1)
+dev.off()
+```
+
+```{r fig_1_distributions3}
+
+#Cadmium
+percentile_Cd_25 <- quantile(log10(All_Data$Cd111), probs = 0.25, na.rm = TRUE)
+percentile_Cd_50 <- quantile(log10(All_Data$Cd111), probs = 0.50, na.rm = TRUE)
+percentile_Cd_75 <- quantile(log10(All_Data$Cd111), probs = 0.75, na.rm = TRUE)
+
+Cadmium_Guideline2 <- ggplot(data=All_Data, aes(y=log10(Cd111), x=0))+
+  geom_violin()+
+  geom_sina(alpha=0.1)+
+  geom_hline(aes(yintercept = log10(0.1)), color="darkred", linetype="solid", size=1.3) +
+  geom_hline(aes(yintercept = percentile_Cd_25), color = "darkgreen", linetype = "dashed") +
+  geom_hline(aes(yintercept = percentile_Cd_50), color = "darkblue", linetype = "dashed") +
+  geom_hline(aes(yintercept = percentile_Cd_75), color = "darkorange", linetype = "dashed") +
+  scale_color_manual(values = c("darkred" = "darkred", "darkgreen" = "darkgreen", "darkblue" = "darkblue", "darkorange" = "darkorange"),
+                     labels = c("0.1 ug/g", "25th","50th","75th"))+ 
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank(),
+        plot.title = element_text(hjust = 0.5), 
+        legend.position = "bottom",
+        legend.justification = "center",
+        legend.direction = "vertical",
+        legend.title = element_blank()) + 
+  xlab("")+
+  ylab("Log10 Concentration")+
+  ggtitle("Cadmium")
+
+#Copper
+percentile_Cu_25 <- quantile(log10(All_Data$Cu65), probs = 0.25, na.rm = TRUE)
+percentile_Cu_50 <- quantile(log10(All_Data$Cu65), probs = 0.50, na.rm = TRUE)
+percentile_Cu_75 <- quantile(log10(All_Data$Cu65), probs = 0.75, na.rm = TRUE)
+
+Copper_Guideline2 <- ggplot(data=All_Data, aes(y=log10(Cu65), x=0))+
+  geom_violin()+
+  geom_sina(alpha=0.1)+
+  geom_hline(aes(yintercept = log10(10)), color="darkred", linetype="solid", size=1.3) +
+  geom_hline(aes(yintercept = percentile_Cu_25), color = "darkgreen", linetype = "dashed") +
+  geom_hline(aes(yintercept = percentile_Cu_50), color = "darkblue", linetype = "dashed") +
+  geom_hline(aes(yintercept = percentile_Cu_75), color = "darkorange", linetype = "dashed") +
+  scale_color_manual(values = c("darkred" = "darkred", "darkgreen" = "darkgreen", "darkblue" = "darkblue", "darkorange" = "darkorange"),
+                     labels = c("10 ug/g", "25th","50th","75th"))+ 
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank(),
+        plot.title = element_text(hjust = 0.5), 
+        legend.position = "bottom",
+        legend.justification = "center", 
+        legend.title = element_blank()) + 
+  xlab("")+
+  ylab("")+
+  ggtitle("Copper")
+
+#Iron
+percentile_Fe_25 <- quantile(log10(All_Data$Fe57), probs = 0.25, na.rm = TRUE)
+percentile_Fe_50 <- quantile(log10(All_Data$Fe57), probs = 0.50, na.rm = TRUE)
+percentile_Fe_75 <- quantile(log10(All_Data$Fe57), probs = 0.75, na.rm = TRUE)
+
+Iron_Guideline2 <- ggplot(data=All_Data, aes(y=log10(Fe57), x=0))+
+  geom_violin()+
+  geom_sina(alpha=0.1)+
+  geom_hline(aes(yintercept = log10(10)), color="darkred", linetype="solid", size=1.3) +
+  geom_hline(aes(yintercept = percentile_Fe_25), color = "darkgreen", linetype = "dashed") +
+  geom_hline(aes(yintercept = percentile_Fe_50), color = "darkblue", linetype = "dashed") +
+  geom_hline(aes(yintercept = percentile_Fe_75), color = "darkorange", linetype = "dashed") +
+  scale_color_manual(values = c("darkred" = "darkred", "darkgreen" = "darkgreen", "darkblue" = "darkblue", "darkorange" = "darkorange"),
+                     labels = c("10 ug/g", "25th","50th","75th"))+ 
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank(),
+        plot.title = element_text(hjust = 0.5), 
+        legend.position = "bottom",
+        legend.justification = "center",
+        legend.direction = "vertical",
+        legend.title = element_blank()) + 
+  xlab("")+
+  ylab("")+
+  ggtitle("Iron")
+
+#Lead
+percentile_Pb_25 <- quantile(log10(All_Data$Pb208), probs = 0.25, na.rm = TRUE)
+percentile_Pb_50 <- quantile(log10(All_Data$Pb208), probs = 0.50, na.rm = TRUE)
+percentile_Pb_75 <- quantile(log10(All_Data$Pb208), probs = 0.75, na.rm = TRUE)
+
+Lead_Guideline2 <- ggplot(data=All_Data, aes(y=log10(Pb208), x=0))+
+  geom_violin()+
+  geom_sina(alpha=0.1)+
+  geom_hline(aes(yintercept = log10(10)), color="darkred", linetype="solid", size=1.3) +
+  geom_hline(aes(yintercept = percentile_Pb_25), color = "darkgreen", linetype = "dashed") +
+  geom_hline(aes(yintercept = percentile_Pb_50), color = "darkblue", linetype = "dashed") +
+  geom_hline(aes(yintercept = percentile_Pb_75), color = "darkorange", linetype = "dashed") +
+  scale_color_manual(values = c("darkred" = "darkred", "darkgreen" = "darkgreen", "darkblue" = "darkblue", "darkorange" = "darkorange"),
+                     labels = c("10 ug/g", "25th","50th","75th"))+  
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank(),
+        plot.title = element_text(hjust = 0.5), 
+        legend.position = "bottom",
+        legend.justification = "center", 
+        legend.title = element_blank()) + 
+  xlab("")+
+  ylab("")+
+  ggtitle("Lead")
+
+#Manganese
+percentile_Mn_25 <- quantile(log10(All_Data$Mn55), probs = 0.25, na.rm = TRUE)
+percentile_Mn_50 <- quantile(log10(All_Data$Mn55), probs = 0.50, na.rm = TRUE)
+percentile_Mn_75 <- quantile(log10(All_Data$Mn55), probs = 0.75, na.rm = TRUE)
+
+Manganese_Guideline2 <- ggplot(data=All_Data, aes(y=log10(Mn55), x=0))+
+  geom_violin()+
+  geom_sina(alpha=0.1)+
+  geom_hline(aes(yintercept = log10(1)), color="darkred", linetype="solid", size=1.3) +
+  geom_hline(aes(yintercept = percentile_Mn_25), color = "darkgreen", linetype = "dashed") +
+  geom_hline(aes(yintercept = percentile_Mn_50), color = "darkblue", linetype = "dashed") +
+  geom_hline(aes(yintercept = percentile_Mn_75), color = "darkorange", linetype = "dashed") +
+  scale_color_manual(values = c("darkred" = "darkred", "darkgreen" = "darkgreen", "darkblue" = "darkblue", "darkorange" = "darkorange"),
+                     labels = c("1 ug/g", "25th","50th","75th"))+  
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank(),
+        plot.title = element_text(hjust = 0.5), 
+        legend.position = "bottom",
+        legend.justification = "center", 
+        legend.title = element_blank()) + 
+  xlab("")+
+  ylab("")+
+  ggtitle("Manganese")
+
+#Mercury
+percentile_Hg_25 <- quantile(log10(All_Data$Hg202), probs = 0.25, na.rm = TRUE)
+percentile_Hg_50 <- quantile(log10(All_Data$Hg202), probs = 0.50, na.rm = TRUE)
+percentile_Hg_75 <- quantile(log10(All_Data$Hg202), probs = 0.75, na.rm = TRUE)
+
+Mercury_Guideline2 <- ggplot(data=All_Data, aes(y=log10(Hg202), x=0))+
+  geom_violin()+
+  geom_sina(alpha=0.1)+
+  geom_hline(aes(yintercept = log10(1)), color="darkred", linetype="solid", size=1.3) +
+  geom_hline(aes(yintercept = percentile_Hg_25), color = "darkgreen", linetype = "dashed") +
+  geom_hline(aes(yintercept = percentile_Hg_50), color = "darkblue", linetype = "dashed") +
+  geom_hline(aes(yintercept = percentile_Hg_75), color = "darkorange", linetype = "dashed") +
+  scale_color_manual(values = c("darkred" = "darkred", "darkgreen" = "darkgreen", "darkblue" = "darkblue", "darkorange" = "darkorange"),
+                     labels = c("1 ug/g", "25th","50th","75th"))+  
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank(),
+        plot.title = element_text(hjust = 0.5), 
+        legend.position = "bottom",
+        legend.justification = "center", 
+        legend.title = element_blank()) + 
+  xlab("")+
+  ylab("")+
+  ggtitle("Mercury")
+
+#Uranium
+percentile_U_25 <- quantile(log10(All_Data$U238), probs = 0.25, na.rm = TRUE)
+percentile_U_50 <- quantile(log10(All_Data$U238), probs = 0.50, na.rm = TRUE)
+percentile_U_75 <- quantile(log10(All_Data$U238), probs = 0.75, na.rm = TRUE)
+
+Uranium_Guideline2 <- ggplot(data=All_Data, aes(y=log10(U238), x=0))+
+  geom_violin()+
+  geom_sina(alpha=0.1)+
+  geom_hline(aes(yintercept = log10(0.1)), color="darkred", linetype="solid", size=1.3) +
+  geom_hline(aes(yintercept = percentile_U_25), color = "darkgreen", linetype = "dashed") +
+  geom_hline(aes(yintercept = percentile_U_50), color = "darkblue", linetype = "dashed") +
+  geom_hline(aes(yintercept = percentile_U_75), color = "darkorange", linetype = "dashed") +
+  scale_color_manual(values = c("darkred" = "darkred", "darkgreen" = "darkgreen", "darkblue" = "darkblue", "darkorange" = "darkorange"),
+                     labels = c("0.1 ug/g", "25th","50th","75th"))+  
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank(),
+        plot.title = element_text(hjust = 0.5), 
+        legend.position = "bottom",
+        legend.justification = "center", 
+        legend.title = element_blank()) + 
+  xlab("")+
+  ylab("")+
+  ggtitle("Uranium")
+
+
+#png("All_Data_and_Guidelines4.png", width=5000, height=1500, res=300)
+#ggarrange(Arsenic_Guideline2, Cadmium_Guideline2, Copper_Guideline2, Iron_Guideline2, Lead_Guideline2, Manganese_Guideline2, Mercury_Guideline2, Uranium_Guideline2)
+#dev.off()
+
+Mercury_Guideline_ForLegend <- ggplot(data=All_Data, aes(y=log10(Hg202), x=0))+
+    geom_violin()+
+    geom_hline(aes(yintercept = log10(1), color="Guideline"), linetype="solid", size=1.3) +
+    geom_hline(aes(yintercept = percentile_Hg_25, color = "25th Percentile"), linetype = "dashed") +
+    geom_hline(aes(yintercept = percentile_Hg_50, color = "50th Percentile"), linetype = "dashed") +
+    geom_hline(aes(yintercept = percentile_Hg_75, color = "75th Percentile"), linetype = "dashed") +
+    scale_color_manual(values = c("Guideline" = "darkred", "25th Percentile" = "darkgreen", "50th Percentile" = "darkblue", "75th Percentile" = "darkorange"))+  
+    theme(panel.background = element_rect(fill="#ffffff"),
+          axis.line = element_line(color="#000000"),
+          text = element_text(size = 15),
+          axis.ticks.x = element_blank(),
+          axis.text.x = element_blank(),
+          plot.title = element_text(hjust = 0.5), 
+          legend.position = "bottom",
+          legend.justification = "center",
+          legend.direction = "vertical",
+          legend.title = element_blank()) + 
+    xlab("")+
+    ylab("")+
+    ggtitle("Mercury")
+
+g_legend<-function(a.gplot){
+  tmp <- ggplot_gtable(ggplot_build(a.gplot))
+  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+  legend <- tmp$grobs[[leg]]
+  return(legend)}
+
+mylegend_1<-g_legend(Mercury_Guideline_ForLegend)
+
+png("All_Data_and_Guidelines4_WithLegend.png", width=6000, height=1500, res=300)
+grid.arrange(Cadmium_Guideline2, Copper_Guideline2, Lead_Guideline2, Manganese_Guideline2, Mercury_Guideline2, Uranium_Guideline2, mylegend_1, nrow=1)
+dev.off()
+```
 
 ### Metals Concentrations
-The figure below shows metals concentrations on log10 scale.  NA values are
-omitted.
+The figure below shows metals concentrations on log10 scale.  NA values are omitted.
 
-The shape of the Pb distributions are nearly identical (omitted 206 and 207). On the whole, these
-distributions are not as bad as I feared.  All are still right-skewed after
-transformation, but they do not look pathologic.
+The shape of the Pb distributions are nearly identical (omitted 206 and 207). On the whole, these distributions are not as bad as I feared. All are still right-skewed after transformation, but they do not look pathologic.
 
 ```{r, intitialPlots, fig.cap="Metals concentrations - log10 scale"}
 ## change from wide to long format for plotting
 
 metals %>% pivot_longer(-c(ID, Site), names_to="Metal", values_to="Concentration") %>%
-    ggplot(aes(x=Concentration)) + geom_density() +
-        scale_x_log10() + facet_wrap(~ Metal) +
-            ggtitle("Distributions of Metals Concentrations (log10 transform)")
+    ggplot(aes(x=log10(Concentration))) + geom_density() +
+         facet_wrap(~ Metal) +
+            ggtitle("Distributions of Metals Concentrations After Log10 Transform")+
+  theme(panel.background = element_blank())
+
+metals %>% pivot_longer(-c(ID, Site), names_to="Metal", values_to="Concentration") %>%
+    ggplot(aes(x=Concentration)) + geom_histogram() +
+         facet_wrap(~ Metal) +
+            ggtitle("Distributions of Metals Concentrations")+
+  theme(panel.background = element_blank())
+
+Hist_As_Raw <- ggplot(data=subset(All_Data, All_Data$As75>=0), aes(x=As75))+geom_density()+
+            ggtitle("Arsenic (ug/g)")+
+  xlab("")+
+  theme(panel.background = element_blank(),
+        text = element_text(size=8.4))
+
+Hist_Cd_Raw <- ggplot(data=All_Data, aes(x=Cd111))+geom_density()+
+            ggtitle("Cadmium (ug/g)")+
+  xlab("")+
+  ylab("")+
+  theme(panel.background = element_blank(),
+        text = element_text(size=8.4))
+
+Hist_Cu_Raw <- ggplot(data=All_Data, aes(x=Cu65))+geom_density()+
+            ggtitle("Copper (ug/g)")+
+  xlab("")+
+  ylab("")+
+  theme(panel.background = element_blank(),
+        text = element_text(size=8.4))
+
+Hist_Fe_Raw <- ggplot(data=All_Data, aes(x=Fe57))+geom_density()+
+            ggtitle("Iron (ug/g)")+
+  xlab("")+
+  ylab("")+
+  theme(panel.background = element_blank(),
+        text = element_text(size=8.4))
+
+Hist_Pb_Raw <- ggplot(data=All_Data, aes(x=Pb208))+geom_density()+
+            ggtitle("Lead (ug/g)")+
+  xlab("")+
+  theme(panel.background = element_blank(),
+        text = element_text(size=8.4))
+
+Hist_Mn_Raw <- ggplot(data=All_Data, aes(x=Mn55))+geom_density()+
+            ggtitle("Manganese (ug/g)")+
+  xlab("")+
+  ylab("")+
+  theme(panel.background = element_blank(),
+        text = element_text(size=8.4))
+
+Hist_Hg_Raw <- ggplot(data=All_Data, aes(x=Hg202))+geom_density()+
+            ggtitle("Mercury (ug/g)")+
+  xlab("")+
+  ylab("")+
+  theme(panel.background = element_blank(),
+        text = element_text(size=8.4))
+
+Hist_U_Raw <- ggplot(data=All_Data, aes(x=U238))+geom_density()+
+            ggtitle("Uranium (ug/g)")+
+  xlab("")+
+  ylab("")+
+  theme(panel.background = element_blank(),
+        text = element_text(size=8.4))
+
+
+
+#Just want to compare here to the original data that did not have any imputation / LOD changes:
+Original_Metals_No_Imp <- read_excel("~/Desktop/Yuma Project/Datasets/Original_Metals_No_Imp.xlsx")
+Original_Metals_No_Imp %>% pivot_longer(cols = c(Mn55,Cu65,Cd111,Hg202,Pb208,U238), names_to="Metal", values_to="Concentration") %>%
+    ggplot(aes(x=log10(Concentration))) + geom_density() +
+         facet_wrap(~ Metal) +
+            ggtitle("Distributions of Metals Concentrations (log10 transform) - \nOriginal Data (No Imputation)")
+
 ```
 
 ### Remove Missing Values
 
 Values labeled as NA across (nearly all metals) are not measured.
-For each observation with missing metals, omit the observation.  In addition
-there are 89 observations with missing Hg values.  We may impute these missing values
-based on site and other observed metals
-
-
-
-*Note* - Other BDL values are replaced with the limit of detection/sqrt(2).
+For each observation with missing metals, omit the observation. 
+In addition, there are 89 observations with missing Hg values. We may impute these missing values based on site and other observed metals.
 
 
 ```{r, omitmissing}
 names(metals)
-metals.obs <- metals[!is.na(metals[,2]), ]
-## for Hg, replace NA and zero with 0.029/sqrt(2)
-##sort(metals.obs[,"Hg202"])
-## Hg.subs <- 0.029 /sqrt(2)
 
-metals.complete.cases <- metals.obs %>% filter(!is.na(Cu65)) %>% 
-    filter(!is.na(Hg202)) ## ID R1108 also missing Hg, other metals observed
+library(dplyr)
+
+metals %>% 
+   summarise(n=sum(is.na(Mn55)&
+                      is.na(Cu65)&
+                      is.na(Cd111)&
+                      is.na(Hg202)&
+                      is.na(Pb208)&
+                      is.na(U238))) #There are 115 rows where there are NO values for any of the metals
+
+#metals.obs <- metals[!is.na(metals[,2]), ]
+
+metals.obs <- metals %>%
+ filter(!(is.na(Mn55) & is.na(Cu65) & is.na(Cd111) & is.na(Hg202) & is.na(Pb208) & is.na(U238)))
+
+## for Hg, replace NA and zero with 0.029/sqrt(2)
+## sort(metals.obs[,"Hg202"])
+## Hg.subs <- 0.029 /sqrt(2) 
+
+#metals.complete.cases <- metals.obs %>% filter(!is.na(Cu65)) %>% 
+#    filter(!is.na(Hg202)) ## ID R1108 also missing Hg, other metals observed
+
+metals.complete.cases <- metals.obs[complete.cases(metals.obs), ]
 
 dim(metals.complete.cases) ## 111 8 wow - small data set
 summary(metals.complete.cases)
 
-metals.impute.Hg <- metals.obs %>% filter(!is.na(Cu65)) %>% 
+metals.impute.Hg <- metals.obs %>% filter(!is.na(Cu65)) %>%
+   filter(ID!="C1051") %>% #Added to remove one more incomplete row - JKH
     filter(is.na(Hg202))
+
+simpsons_pallette <- c("#71D0F599", "#37033599", "#07514999")
+ggplot(data = metals.impute.Hg, aes(x = factor(Site), fill = factor(Site))) +
+  geom_bar(stat = "count", position = "dodge") +
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"))+
+  labs(x = "",
+       y = "Frequency of Missing Hg")+
+  theme(legend.position = "none")+
+  scale_x_discrete(labels = c("1" = "CSF", "2" = "RCBH", "3" = "YRMC"))+
+  scale_fill_manual(values=simpsons_pallette)+
+  theme(text = element_text(size = 15))
+  
+
+metals.impute.Hg %>% 
+  summarise(percent_CSF=sum(Site==1)/75,
+            percent_RCBH=sum(Site==2)/125,
+            percent_YRMC=sum(Site==3)/123)
 
 metals.complete.log10 <- cbind(ID=metals.complete.cases[,"ID"],
                                log10(metals.complete.cases[,2:7]),
@@ -157,7 +1108,7 @@ metals.impute.Hg
 Hg.lm <- lm(Hg202 ~ as.factor(Site) + Mn55 + Cu65 + Cd111 + Pb208 + U238,
             data=metals.complete.log10) 
 qplot(metals.complete.log10[,"Hg202"], predict(Hg.lm))
-qplot( predict(Hg.lm), resid(Hg.lm))
+qplot(predict(Hg.lm), resid(Hg.lm))
 
 Hg.imputed <-  predict(Hg.lm, newdata=metals.impute.log10)
 
@@ -173,6 +1124,7 @@ metals.allobs.log10 <- rbind(metals.complete.log10, metals.fillin.log10)
 
 ## check summary
 summary(metals.allobs.log10)
+
 ```
 
 ### Adjusted (Hg Imputed) Concentrations
@@ -184,7 +1136,7 @@ New figure with Hg values imputed using regression on other metals
 metals.allobs.log10 %>% pivot_longer(-c(ID, Site), names_to="Metal", values_to="Concentration") %>%
     ggplot(aes(x=Concentration)) + geom_density() +
          facet_wrap(~ Metal) +
-            ggtitle("Distributions of Metals Concentrations (missin Hg values imputed, log10 transform)")
+            ggtitle("Distributions of Metals Concentrations \n(missing Hg values imputed, log10 transform)")
 ```
 
 ## Robust PCA
@@ -205,16 +1157,11 @@ Now we move on to Robust PCA.  We use the method described by the following pape
 This is implemented in the R package $rospca$
 
 
-The plot below shows results from the robust PCA.  The "Score distance"
-describes the leverage that an indvidual point has in determining the fitted PCA
-surface. The "Orthogonal distance" shows the distance to the fitted surface.
+The plot below shows results from the robust PCA.  The "Score distance" describes the leverage that an individual point has in determining the fitted PCA surface. The "Orthogonal distance" shows the distance to the fitted surface.
 
-Thus, points 31, 48, 85, and 200 heaviy influence the slope of the PCA surface
-(the loadings). Conversely, point 143 is a large distance from the mass of
-points, but has little influence on the loadings.
+Thus, points 41, 79, 711, and 205 heavily influence the slope of the PCA surface (the loadings). Conversely, points 32 and 791 are a large distance from the mass of points, but have little influence on the loadings.
 
-The eigenvalues (bottom of the box) show that of the variation is captured
-in PC1 (41%) and PC2 (20%).
+The eigenvalues (bottom of the box) show that of the variation is captured primarily in PC1 (47%) and PC2 (22%).
 
 ```{r, robpca}
 ##install.packages("rospca", repos="http://cran.r-project.org")
@@ -236,8 +1183,7 @@ round(metals.pca[[2]]/sum(metals.pca[[2]]), 3) ## variation in PC's is as expect
 diagPlot(metals.pca)
 ```
 
-The eigenvalues show that PC1 and PC2 exhibit the majority of the variance, PC
-3-5 are smaller.  In general, the diagnostic plot suggests that robust PCA is warranted
+The eigenvalues show that PC1 and PC2 exhibit the majority of the variance, PC 3-5 are smaller.  In general, the diagnostic plot suggests that robust PCA is warranted
 
 ### PCA Loadings
 The loadings are shown below. 
@@ -250,32 +1196,37 @@ names(metals.allobs.log10[,2:7])
 ```
 There are a few of points to notice about the loadings
 
-1. All components of PC1 have the same sign. As before, this suggests a "common" effect to
-   all measurements. For example, all metals tend to be "high" or "low"
-   together. May be caused either by global high-low exposure of inviduals, or
-   by mass spectrometry measurement issues.
+1. All components of PC1 have the same sign. As before, this suggests a "common" effect to all measurements. For example, all metals tend to be "high" or "low" together. May be caused either by global high-low exposure of individuals, or by mass spectrometry measurement issues.
 
 2. PC1 has highest loading for Pb208, Mn55, and Cu65
 
-2. For PC2, U238 is the biggest driver. 
+3. For PC2, U238 is the biggest driver. 
 
 
 ### PCA Scores for Individuals
 
-Finally, we look at PCA scores by site.  The second figure below shows clearly
-that site 2 has slightly more variation than site 3. But not bad. It appears
-that site 3 may be slightly greater on PC2 than is site 2.
+Finally, we look at PCA scores by site. The second figure below shows clearly that site 2 has slightly more variation than site 3. But not bad. It appears that site 3 may be slightly greater on PC2 than is site 2.
 
 
 ```{r, pcaplot}
 ##names(metals.allobs.log10)
 metals.pca.df <- data.frame(Site=factor(metals.allobs.log10$Site), metals.pca$scores)
+metals.pca.df2 <- data.frame(Site=factor(metals.allobs.log10$Site), ID=metals.allobs.log10$ID, metals.pca$scores)
+
 
 qplot(x=PC1, y=PC2, data=metals.pca.df, col=Site,
       title="Robust PCA Scores by Site")
 
-qplot(x=PC1, y=PC2, data=metals.pca.df) + ggtitle("Robust PCA Scores by Site") +
-    facet_wrap(~ Site)
+site_labels <- as_labeller(c("1" = "CSF", "2" = "RCBH", "3" = "YRMC"))
+
+qplot(x=PC1, y=PC2, data=metals.pca.df) +
+  ggtitle("Robust PCA Scores by Site") +
+  facet_wrap(~ Site, labeller = site_labels) + 
+  theme_minimal() +
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        plot.title = element_text(hjust = 0.5), 
+        legend.position = "none") 
 
 
 ## dim(metals.pca$scores)
@@ -284,9 +1235,9 @@ qplot(x=PC1, y=PC2, data=metals.pca.df) + ggtitle("Robust PCA Scores by Site") +
 metals.robpca <- cbind(metals.allobs.log10, metals.pca$scores)
 ## dim(metals.robpca)
 ### about here
-qplot(x=PC1, y=Mn55, data=metals.robpca, col=as.factor(Site))
-qplot(x=PC1, y=Pb208, data=metals.robpca, col=as.factor(Site))
-qplot(x=PC2, y=U238, data=metals.robpca, col=as.factor(Site))
+qplot(x=PC1, y=Mn55, data=metals.robpca, col=as.factor(Site))+scale_color_discrete(name="Site", labels=c("CSF", "RCBH", "YRMC"))+theme(panel.background = element_rect(fill="#ffffff"), axis.line = element_line(color="#000000"))
+qplot(x=PC1, y=Pb208, data=metals.robpca, col=as.factor(Site))+scale_color_discrete(name="Site", labels=c("CSF", "RCBH", "YRMC"))+theme(panel.background = element_rect(fill="#ffffff"), axis.line = element_line(color="#000000"))
+qplot(x=PC2, y=U238, data=metals.robpca, col=as.factor(Site))+scale_color_discrete(name="Site", labels=c("CSF", "RCBH", "YRMC"))+theme(panel.background = element_rect(fill="#ffffff"), axis.line = element_line(color="#000000"))
 
 
 write.csv(metals.robpca, file="metals_Impute_log10_PCA_scores.csv", quote=F, row.names=F)

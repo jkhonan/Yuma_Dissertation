@@ -6,67 +6,35 @@ output: html_document
 ---
 # An Analysis of PC1 and PC2 Compared to Yuma Health Outcomes
 
-Note: The following scripts must be run prior to completing this analysis: Data_Clean.Rmd, Yuma_Metals_Analysis.Rmd, Demographics.Rmd, yuma-metals-20210821.Rmd, and Exploration.Rmd. This will provide the accurate dataframes used in the following code.
+Note: The following scripts must be run prior to completing this analysis: Data_Clean.Rmd, Yuma_Metals_Analysis.Rmd, Demographics.Rmd, yuma-metals-20210821.Rmd. This will provide the accurate dataframes used in the following code.
 
 ## Data Descriptions
 ```{r desc}
+## Required libraries
 library(DataExplorer)
 library(ggplot2)
 library(ggpubr)
 library(gridExtra)
+library(dplyr)
+library(tidyverse)
+library(scales)
+
+Metals_PCA <- merge(Metals, metals.robpca, by = "ID", all.x = TRUE)
+Metals_PCA <- Metals_PCA %>% dplyr::select(-Mn55.y, -Cu65.y, -Cd111.y, -Hg202.y, -Pb208.y, -U238.y, -Site.y)
+colnames(Metals_PCA)[colnames(Metals_PCA) == 'Site.x'] <- 'Site'
+
 #create_report(Metals) (Remove the # when you actually want to run - takes too much processing power otherwise.)
 ```
 
 
 ## Data Visualization - Exploratory
 
-### Concentrations by Date
-```{r envt_samples_by_collectiondate}
-library(dplyr)
-
-
-colnames(metals.robpca) <- c("ID", "Log10_Mn55", "Log10_Cu65", "Log10_Cd111", "Log10_Hg202", "Log10_Pb208", "Log10_U238", "Site", "PC1", "PC2", "PC3", "PC4", "PC5")
-
-Metals <- merge(Metals, metals.robpca, by = c("ID", "Site"), all=T)
-
-colnames(Metals)[colnames(Metals) %in% c("Log10_Mn55.x", "Log10_Cu65.x", "Log10_Cd111.x", "Log10_Hg202.x", "Log10_Pb208.x", "Log10_U238.x", "PC1.x", "PC2.x", "PC3.x", "PC4.x", "PC5.x")] <- c("Log10_Mn55", "Log10_Cu65", "Log10_Cd111", "Log10_Hg202", "Log10_Pb208", "Log10_U238", "PC1", "PC2", "PC3", "PC4", "PC5")
-
-Metals <- Metals[ , !names(Metals) %in% c("Log10_Mn55.y", "Log10_Cu65.y", "Log10_Cd111.y", "Log10_Hg202.y", "Log10_Pb208.y", "Log10_U238.y", "PC1.y", "PC2.y", "PC3.y", "PC4.y", "PC5.y")]
-
-Metals <- Metals %>%
-  filter(!is.na(DOB_year))
- 
-ggplot(Metals, aes(y=PC1, x=Date, color=as.factor(Site)))+
-  geom_point()+
-  geom_smooth(se=F)+
-  scale_color_discrete("Site", labels=c("1"="CSF", "2"="RCBH", "3"="YRMC"))+
-  theme(panel.background = element_rect(fill="#ffffff"),
-        axis.text.x=element_text(angle=60, hjust=1),
-        axis.line = element_line(color="#000000"))+
-  scale_x_date(date_breaks = "1 month", date_labels =  "%b")+
-  ylab("PC1")+
-  xlab("Date of Sample Collection")
-
-ggplot(Metals, aes(y=PC2, x=Date, color=as.factor(Site)))+
-  geom_point()+
-  geom_smooth(se=F)+
-  scale_color_discrete("Site", labels=c("1"="CSF", "2"="RCBH", "3"="YRMC"))+
-  theme(panel.background = element_rect(fill="#ffffff"),
-        axis.text.x=element_text(angle=60, hjust=1),
-        axis.line = element_line(color="#000000"))+
-  scale_x_date(date_breaks = "1 month", date_labels =  "%b")+
-  ylab("PC2")+
-  xlab("Date of Sample Collection")
-
-#Relevant paper: https://www.sciencedirect.com/science/article/pii/S1878535212000263 
-```
 
 ### Tables and Observations for Each Metal
 ```{r observations_envt_samples}
 
-library(dplyr)
 
-Metals %>% 
+Metals_PCA %>% 
   group_by(Site) %>% 
   summarize(number_NAs_PC1=sum(is.na(PC1)),
             number_NAs_PC2=sum(is.na(PC2)))
@@ -88,18 +56,36 @@ Metals %>%
 
 ### Distribution of PCA Data
 ```{r metal_distributions}
-hist(Metals$PC1)
+hist1 <- hist(Metals_PCA$PC1)
 
-hist(Metals$PC2)
+hist2 <- hist(Metals_PCA$PC2)
+
+plot(hist1, col=rgb(0,0,1,1/4), ylim=c(0,100), main="Distributions of PCs", xlab = "")  # first histogram,  xlim=c(0,10)
+plot(hist2, col=rgb(1,0,0,1/4), ylim=c(0,100), add=T) # second histogram ,  xlim=c(0,10),
+legend("topright", c("PC1", "PC2"), fill=c(rgb(0,0,1,1/4), rgb(1,0,0,1/4)))
+box()
+
 ```
 
 ### Plotting Hormone Levels Against Metal Concentrations
 ```{r metals_hormones}
 #Cortisol against PCA results
-PC1_Cortisol <- ggplot(Metals, aes(x=PC1, y=Cortisol))+geom_point()
-PC2_Cortisol <- ggplot(Metals, aes(x=PC2, y=Cortisol))+geom_point()
+PC1_Cortisol <- ggplot(Metals_PCA, aes(x=PC1, y=Cortisol))+geom_point()
+PC2_Cortisol <- ggplot(Metals_PCA, aes(x=PC2, y=Cortisol))+geom_point()
 
 grid.arrange(PC1_Cortisol, PC2_Cortisol)
+
+#TSH against PCA results
+PC1_TSH <- ggplot(Metals_PCA, aes(x=PC1, y=log10(TSH)))+geom_point()
+PC2_TSH <- ggplot(Metals_PCA, aes(x=PC2, y=log10(TSH)))+geom_point()
+
+grid.arrange(PC1_TSH, PC2_TSH)
+
+#Free T4 against PCA results
+PC1_fT4 <- ggplot(Metals_PCA, aes(x=PC1, y=fT4))+geom_point()
+PC2_fT4 <- ggplot(Metals_PCA, aes(x=PC2, y=fT4))+geom_point()
+
+grid.arrange(PC1_fT4, PC2_fT4)
 ```
 
 ### PCA Stuff from Dean
@@ -110,43 +96,74 @@ Kept Pb208.
 
 The classic vs. robust PCAs were different enough that Dean felt like keeping the robust version was worth it. Even after logging the data, they are still skewed.
 
-PC1 is all positively correlated, which shows that it is an analysis of overall exposure.
+PC1 is all positively correlated, which shows that it is a good analysis of overall exposure.
 
 PC2 shows which ones are correlated in the same +ve or -ve directions.
 
 ### PCA by Gender
 ```{r PCA_Demo}
-library(ggpubr)
-
-Gender_PC1 <- ggplot(Metals, aes(y=PC1, x=as.factor(Gender), fill=as.factor(Gender)))+
-  geom_boxplot()+
-  theme(legend.position = "none",
+Gender_PC1 <- ggplot(subset(Metals_PCA, !is.na(Metals_PCA$Gender)), aes(y=PC1, x=as.factor(Gender), fill=as.factor(Gender))) +
+ geom_boxplot() +
+  geom_jitter(alpha=0.15)+
+ scale_x_discrete(labels = c("1" = "Male", "2" = "Female")) +
+ theme(legend.position = "none",
         panel.background = element_rect(fill="#ffffff"),
         axis.text.x=element_text(angle=60, hjust=1),
-        axis.line = element_line(color="#000000"))+
-  ylab("PC1")+
-  xlab("")
+        axis.line = element_line(color="#000000")) +
+ ylab("PC1") +
+ xlab("")
 
-Gender_PC2 <- ggplot(Metals, aes(y=PC2, x=as.factor(Gender), fill=as.factor(Gender)))+
-  geom_boxplot()+
-  scale_fill_discrete("Gender", labels=c("1"="Male", "2"="Female"))+
-  theme(panel.background = element_rect(fill="#ffffff"),
+Gender_PC2 <- ggplot(subset(Metals_PCA, !is.na(Metals_PCA$Gender)), aes(y=PC2, x=as.factor(Gender), fill=as.factor(Gender))) +
+ geom_boxplot() +
+  geom_jitter(alpha=0.15)+
+ scale_x_discrete(labels = c("1" = "Male", "2" = "Female")) +
+ theme(legend.position = "none",
+       panel.background = element_rect(fill="#ffffff"),
         axis.text.x=element_text(angle=60, hjust=1),
-        axis.line = element_line(color="#000000"))+
-  ylab("PC2")+
-  xlab("")
+        axis.line = element_line(color="#000000")) +
+ ylab("PC2") +
+ xlab("")
 
-ggarrange(Gender_PC1, Gender_PC2)
-ggpubr::ggarrange(Gender_PC1,Gender_PC2,
-                  ncol = 2, nrow = 1,
-                  common.legend = T)
+ggarrange(Gender_PC1, Gender_PC2, ncol = 2, nrow = 1, common.legend = FALSE)
+```
+
+### PCA by Farmer Status
+```{r PCA_Demo}
+counts <- Metals %>% 
+  group_by(Farmer) %>% 
+  summarise(count = n())
+
+Farmer_PC1 <- ggplot(subset(Metals_PCA, !is.na(Metals_PCA$Farmer)), aes(y=PC1, x=as.factor(Farmer), fill=as.factor(Farmer))) +
+ geom_boxplot() +
+  geom_jitter(alpha=0.15)+
+ scale_x_discrete(labels = c("1" = "Farmer", "2" = "Non-Farmer")) +
+ theme(legend.position = "none",
+        panel.background = element_rect(fill="#ffffff"),
+        axis.text.x=element_text(angle=60, hjust=1),
+        axis.line = element_line(color="#000000"),
+       text = element_text(size = 15)) +
+ ylab("PC1") +
+ xlab("")
+
+Farmer_PC2 <- ggplot(subset(Metals_PCA, !is.na(Metals_PCA$Farmer)), aes(y=PC2, x=as.factor(Farmer), fill=as.factor(Farmer))) +
+ geom_boxplot() +
+  geom_jitter(alpha=0.15)+
+ scale_x_discrete(labels = c("1" = "Farmer", "2" = "Non-Farmer")) +
+ theme(legend.position = "none",
+       panel.background = element_rect(fill="#ffffff"),
+        axis.text.x=element_text(angle=60, hjust=1),
+        axis.line = element_line(color="#000000"),
+       text = element_text(size = 15)) +
+ ylab("PC2") +
+ xlab("")
+
+ggarrange(Farmer_PC1, Farmer_PC2, ncol = 2, nrow = 1, common.legend = FALSE)
 ```
 
 ### PCA by BMI
 ```{r PCA_Demo}
-aa <- ggplot(Metals, aes(x=PC1, y=log(bmi)))+
+aa <- ggplot(Metals_PCA, aes(x=PC1, y=log(bmi)))+
   geom_point()+
-  geom_smooth(method=lm, se=F)+
   theme(legend.position = "none",
         panel.background = element_rect(fill="#ffffff"),
         axis.text.x=element_text(angle=60, hjust=1),
@@ -154,9 +171,8 @@ aa <- ggplot(Metals, aes(x=PC1, y=log(bmi)))+
   xlab("PC1")+
   ylab("Log BMI (Measured at Sampling Time)")
 
-bb <- ggplot(Metals, aes(x=PC2, y=log(bmi)))+
+bb <- ggplot(Metals_PCA, aes(x=PC2, y=log(bmi)))+
   geom_point()+
-  geom_smooth(method=lm, se=F)+
   theme(legend.position = "none",
         panel.background = element_rect(fill="#ffffff"),
         axis.text.x=element_text(angle=60, hjust=1),
@@ -168,35 +184,41 @@ ggpubr::ggarrange(aa,bb,
                   ncol = 2, nrow = 1,
                   common.legend = T)
 
-a <- ggplot(Metals, aes(x=PC1, y=log(bmi), color=as.factor(Gender)))+
-  geom_point()+
-  geom_smooth(method=lm, se=F)+
-  theme(legend.position = "none",
+a <- ggplot(subset(Metals_PCA, !is.na(Metals_PCA$Gender)), aes(x=PC1, y=log(bmi), color=as.factor(Gender))) +
+ geom_point() +
+ scale_color_discrete(name = "Gender", labels = c("1" = "Male", "2" = "Female")) +
+ theme(legend.position = "none",
         panel.background = element_rect(fill="#ffffff"),
         axis.text.x=element_text(angle=60, hjust=1),
-        axis.line = element_line(color="#000000"))+
-  xlab("PC1")+
-  ylab("Log BMI (Height and Weight Measured at Sampling Time)")
+        axis.line = element_line(color="#000000")) +
+ xlab("PC1") +
+ ylab("Log BMI")
 
-b <- ggplot(Metals, aes(x=PC2, y=log(bmi), color=as.factor(Gender)))+
-  geom_point()+
-  geom_smooth(method=lm, se=F)+
-  theme(panel.background = element_rect(fill="#ffffff"),
+b <- ggplot(subset(Metals_PCA, !is.na(Metals_PCA$Gender)), aes(x=PC2, y=log(bmi), color=as.factor(Gender))) +
+ geom_point() +
+ scale_color_discrete(name = "Gender", labels = c("1" = "Male", "2" = "Female")) +
+ theme(panel.background = element_rect(fill="#ffffff"),
         axis.text.x=element_text(angle=60, hjust=1),
-        axis.line = element_line(color="#000000"))+
-  scale_color_discrete(name="Gender", labels=c("Male", "Female", NA))+
-  labs(Color='Gender')+
-  xlab("PC2")+
-  ylab("")
+        axis.line = element_line(color="#000000")) +
+ xlab("PC2") +
+ ylab("")
 
-ggpubr::ggarrange(a,b,
-                  ncol = 2, nrow = 1,
-                  common.legend = T)
+ggarrange(a, b, ncol = 2, nrow = 1, common.legend = TRUE)
+
+ggplot(Metals_PCA, aes(x=PC1, y=bmi))+
+    geom_point()+
+    geom_smooth(method = lm, se=F)+
+    theme(legend.position = "none",
+          panel.background = element_rect(fill="#ffffff"),
+          axis.text.x=element_text(angle=60, hjust=1),
+          axis.line = element_line(color="#000000"))+
+    xlab("PC1")+
+    ylab("BMI")
 ```
 
 ### PCA by age
 ```{r PCA_Demo}
-e <- ggplot(Metals, aes(y=PC1, x=age))+
+e <- ggplot(Metals_PCA, aes(y=PC1, x=age))+
   geom_point()+
   geom_smooth(method=lm, se=F)+
   theme(legend.position = "none",
@@ -206,7 +228,7 @@ e <- ggplot(Metals, aes(y=PC1, x=age))+
   xlab("Age")+
   ylab("PC1")
 
-f <- ggplot(Metals, aes(y=PC2, x=age))+
+f <- ggplot(Metals_PCA, aes(y=PC2, x=age))+
   geom_point()+
   geom_smooth(method=lm, se=F)+
   theme(legend.position = "none",
@@ -217,10 +239,10 @@ f <- ggplot(Metals, aes(y=PC2, x=age))+
   ylab("PC2")
 
 ggpubr::ggarrange(e,f,
-                  ncol = 2, nrow = 1,
+                  ncol = 1, nrow = 2,
                   common.legend = T)
 
-c <- ggplot(Metals, aes(y=PC1, x=age, color=as.factor(Gender)))+
+c <- ggplot(Metals_PCA, aes(y=PC1, x=age, color=as.factor(Gender)))+
   geom_point()+
   geom_smooth(method=lm, se=F)+
   theme(legend.position = "none",
@@ -230,7 +252,7 @@ c <- ggplot(Metals, aes(y=PC1, x=age, color=as.factor(Gender)))+
   xlab("Age")+
   ylab("PC1")
 
-d <- ggplot(Metals, aes(y=PC2, x=age, color=as.factor(Gender)))+
+d <- ggplot(Metals_PCA, aes(y=PC2, x=age, color=as.factor(Gender)))+
   geom_point()+
   geom_smooth(method=lm, se=F)+
   theme(panel.background = element_rect(fill="#ffffff"),
@@ -244,10 +266,34 @@ d <- ggplot(Metals, aes(y=PC2, x=age, color=as.factor(Gender)))+
 ggpubr::ggarrange(c,d,
                   ncol = 2, nrow = 1,
                   common.legend = T)
+
+
+PC1_ClO4 <- ggplot(Metals_PCA, aes(y=PC1, x=as.numeric(Result_P_ng_mL)))+
+  geom_point()+
+  geom_smooth(method=lm, se=F)+
+  theme(legend.position = "none",
+        panel.background = element_rect(fill="#ffffff"),
+        axis.text.x=element_text(angle=60, hjust=1),
+        axis.line = element_line(color="#000000"))+
+  xlab("")+
+  ylab("PC1")
+
+PC2_ClO4 <- ggplot(Metals_PCA, aes(y=PC2, x=as.numeric(Result_P_ng_mL)))+
+  geom_point()+
+  geom_smooth(method=lm, se=F)+
+  theme(legend.position = "none",
+        panel.background = element_rect(fill="#ffffff"),
+        axis.text.x=element_text(angle=60, hjust=1),
+        axis.line = element_line(color="#000000"))+
+  xlab("Log10 [Perchlorate]")+
+  ylab("PC2")
+
+ggpubr::ggarrange(PC1_ClO4, PC2_ClO4,
+                  ncol = 1, nrow = 2)
 ```
 
 ``` {r other_outcomes}
-g <- ggplot(Metals, aes(y=PC1, x=as.factor(Pesticides), fill=as.factor(Pesticides)))+
+o <- ggplot(subset(Metals_PCA, !is.na(Metals_PCA$Dental_health)), aes(y=PC1, x=as.factor(Dental_health), fill=as.factor(Dental_health)))+
          geom_boxplot()+
   theme(legend.position = "none",
         panel.background = element_rect(fill="#ffffff"),
@@ -256,91 +302,7 @@ g <- ggplot(Metals, aes(y=PC1, x=as.factor(Pesticides), fill=as.factor(Pesticide
   xlab("")+
   ylab("PC1")
 
-h <- ggplot(Metals, aes(y=PC2, x=as.factor(Pesticides), fill=as.factor(Pesticides)))+
-         geom_boxplot()+
-  theme(panel.background = element_rect(fill="#ffffff"),
-        axis.text.x=element_text(angle=60, hjust=1),
-        axis.line = element_line(color="#000000"))+
-  xlab("")+
-  ylab("PC2")
-
-ggpubr::ggarrange(g,h,
-                  ncol = 2, nrow = 1,
-                  common.legend = T)
-
-i <- ggplot(Metals, aes(y=PC1, x=as.factor(Water_home), fill=as.factor(Water_home)))+
-         geom_boxplot()+
-  theme(legend.position = "none",
-        panel.background = element_rect(fill="#ffffff"),
-        axis.text.x=element_text(angle=60, hjust=1),
-        axis.line = element_line(color="#000000"))+
-  xlab("")+
-  ylab("PC1")
-
-j <- ggplot(Metals, aes(y=PC2, x=as.factor(Water_home), fill=as.factor(Water_home)))+
-         geom_boxplot()+
-  theme(panel.background = element_rect(fill="#ffffff"),
-        axis.text.x=element_text(angle=60, hjust=1),
-        axis.line = element_line(color="#000000"))+
-  xlab("")+
-  ylab("PC2")
-
-ggpubr::ggarrange(i,j,
-                  ncol = 2, nrow = 1,
-                  common.legend = T)
-
-k <- ggplot(subset(Metals, !is.na(Metals$Water_work)), aes(y=PC1, x=as.factor(Water_work), fill=as.factor(Water_work)))+
-         geom_boxplot()+
-  theme(legend.position = "none",
-        panel.background = element_rect(fill="#ffffff"),
-        axis.text.x=element_text(angle=60, hjust=1),
-        axis.line = element_line(color="#000000"))+
-  xlab("")+
-  ylab("PC1")
-
-l <- ggplot(subset(Metals, !is.na(Metals$Water_work)), aes(y=PC2, x=as.factor(Water_work), fill=as.factor(Water_work)))+
-         geom_boxplot()+
-  theme(panel.background = element_rect(fill="#ffffff"),
-        axis.text.x=element_text(angle=60, hjust=1),
-        axis.line = element_line(color="#000000"))+
-  xlab("")+
-  ylab("PC2")
-
-ggpubr::ggarrange(k,l,
-                  ncol = 2, nrow = 1,
-                  common.legend = T)
-
-m <- ggplot(Metals, aes(y=PC1, x=as.factor(Lived_in_Yuma), fill=as.factor(Lived_in_Yuma)))+
-         geom_boxplot()+
-  theme(legend.position = "none",
-        panel.background = element_rect(fill="#ffffff"),
-        axis.text.x=element_text(angle=60, hjust=1),
-        axis.line = element_line(color="#000000"))+
-  xlab("")+
-  ylab("PC1")
-
-n <- ggplot(Metals, aes(y=PC2, x=as.factor(Lived_in_Yuma), fill=as.factor(Lived_in_Yuma)))+
-         geom_boxplot()+
-  theme(panel.background = element_rect(fill="#ffffff"),
-        axis.text.x=element_text(angle=60, hjust=1),
-        axis.line = element_line(color="#000000"))+
-  xlab("")+
-  ylab("PC2")
-
-ggpubr::ggarrange(m,n,
-                  ncol = 2, nrow = 1,
-                  common.legend = T)
-
-o <- ggplot(subset(Metals, !is.na(Metals$Dental_health)), aes(y=PC1, x=as.factor(Dental_health), fill=as.factor(Dental_health)))+
-         geom_boxplot()+
-  theme(legend.position = "none",
-        panel.background = element_rect(fill="#ffffff"),
-        axis.text.x=element_text(angle=60, hjust=1),
-        axis.line = element_line(color="#000000"))+
-  xlab("")+
-  ylab("PC1")
-
-p <- ggplot(subset(Metals, !is.na(Metals$Dental_health)), aes(y=PC2, x=as.factor(Dental_health), fill=as.factor(Dental_health)))+
+p <- ggplot(subset(Metals_PCA, !is.na(Metals_PCA$Dental_health)), aes(y=PC2, x=as.factor(Dental_health), fill=as.factor(Dental_health)))+
          geom_boxplot()+
   theme(panel.background = element_rect(fill="#ffffff"),
         axis.text.x=element_text(angle=60, hjust=1),
@@ -352,7 +314,7 @@ ggpubr::ggarrange(o,p,
                   ncol = 2, nrow = 1,
                   common.legend = T)
 
-q <- ggplot(subset(Metals, !is.na(Metals$arthritis)), aes(y=PC1, x=as.factor(arthritis), fill=as.factor(arthritis)))+
+q <- ggplot(subset(Metals_PCA, !is.na(Metals_PCA$arthritis)), aes(y=PC1, x=as.factor(arthritis), fill=as.factor(arthritis)))+
          geom_boxplot()+
   theme(legend.position = "none",
         panel.background = element_rect(fill="#ffffff"),
@@ -361,7 +323,7 @@ q <- ggplot(subset(Metals, !is.na(Metals$arthritis)), aes(y=PC1, x=as.factor(art
   xlab("")+
   ylab("PC1")
 
-r <- ggplot(subset(Metals, !is.na(Metals$arthritis)), aes(y=PC2, x=as.factor(arthritis), fill=as.factor(arthritis)))+
+r <- ggplot(subset(Metals_PCA, !is.na(Metals_PCA$arthritis)), aes(y=PC2, x=as.factor(arthritis), fill=as.factor(arthritis)))+
          geom_boxplot()+
   theme(panel.background = element_rect(fill="#ffffff"),
         axis.text.x=element_text(angle=60, hjust=1),
@@ -373,7 +335,7 @@ ggpubr::ggarrange(q,r,
                   ncol = 2, nrow = 1,
                   common.legend = T)
 
-s <- ggplot(subset(Metals, !is.na(Metals$gout)), aes(y=PC1, x=as.factor(gout), fill=as.factor(gout)))+
+s <- ggplot(subset(Metals_PCA, !is.na(Metals_PCA$gout)), aes(y=PC1, x=as.factor(gout), fill=as.factor(gout)))+
          geom_boxplot()+
   theme(legend.position = "none",
         panel.background = element_rect(fill="#ffffff"),
@@ -382,7 +344,7 @@ s <- ggplot(subset(Metals, !is.na(Metals$gout)), aes(y=PC1, x=as.factor(gout), f
   xlab("")+
   ylab("PC1")
 
-t <- ggplot(subset(Metals, !is.na(Metals$gout)), aes(y=PC2, x=as.factor(gout), fill=as.factor(gout)))+
+t <- ggplot(subset(Metals_PCA, !is.na(Metals_PCA$gout)), aes(y=PC2, x=as.factor(gout), fill=as.factor(gout)))+
          geom_boxplot()+
   theme(panel.background = element_rect(fill="#ffffff"),
         axis.text.x=element_text(angle=60, hjust=1),
@@ -394,13 +356,7 @@ ggpubr::ggarrange(s,t,
                   ncol = 2, nrow = 1,
                   common.legend = T)
 
-
-library(tidyverse)
-library(ggpubr)
-
-
-
-u <- ggplot(subset(Metals, !is.na(Metals$chf)), aes(y=PC1, x=as.factor(chf), fill=as.factor(chf)))+
+u <- ggplot(subset(Metals_PCA, !is.na(Metals_PCA$chf)), aes(y=PC1, x=as.factor(chf), fill=as.factor(chf)))+
          geom_boxplot()+
   theme(legend.position = "none",
         panel.background = element_rect(fill="#ffffff"),
@@ -409,7 +365,7 @@ u <- ggplot(subset(Metals, !is.na(Metals$chf)), aes(y=PC1, x=as.factor(chf), fil
   xlab("")+
   ylab("PC1")
 
-v <- ggplot(subset(Metals, !is.na(Metals$chf)), aes(y=PC2, x=as.factor(chf), fill=as.factor(chf)))+
+v <- ggplot(subset(Metals_PCA, !is.na(Metals_PCA$chf)), aes(y=PC2, x=as.factor(chf), fill=as.factor(chf)))+
          geom_boxplot()+
   theme(panel.background = element_rect(fill="#ffffff"),
         axis.text.x=element_text(angle=60, hjust=1),
@@ -423,3 +379,521 @@ ggpubr::ggarrange(u, v,
 
 
 ```
+
+```{r MLMs}
+#https://stats.stackexchange.com/questions/565567/visualizing-multivariate-multiple-regression-of-continuous-data-in-r
+```
+
+```{r demographics_PCA}
+#Looking to see if any demographic data influences the PCA
+
+##Gender
+PC1_Gender <- ggplot(Metals_PCA, aes(y=PC1, x=as.factor(Gender)))+
+  geom_jitter(aes(color=as.factor(Gender)))+
+  scale_color_discrete(name="Gender",
+                       labels=c("Male", "Female"))+
+  xlab("")+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        panel.spacing = unit(0.75, "cm"))
+
+PC2_Gender <- ggplot(Metals_PCA, aes(y=PC2, x=as.factor(Gender)))+
+  geom_jitter(aes(color=as.factor(Gender)))+
+  scale_color_discrete(name="Gender",
+                       labels=c("Male", "Female"))+
+  xlab("")+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        panel.spacing = unit(0.75, "cm"))
+
+g_legend<-function(a.gplot){
+  tmp <- ggplot_gtable(ggplot_build(a.gplot))
+  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+  legend <- tmp$grobs[[leg]]
+  return(legend)}
+
+mylegend<-g_legend(PC1_Gender)
+
+#grid.arrange(PC1_Gender, PC2_Gender, ncol=2, nrow=1) - simple version
+
+grid.arrange(arrangeGrob(PC1_Gender + theme(legend.position="none"),
+                         PC2_Gender + theme(legend.position="none"),
+                         nrow=2),
+             mylegend, nrow=1)
+
+##Gender and Age
+PC1_age_gender <- ggplot(Metals_PCA, aes(y=PC1, x=age))+
+  geom_jitter(aes(color=as.factor(Gender)))+
+  scale_color_discrete(name="Gender",
+                       labels=c("Male", "Female"))+
+  xlab("")+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        panel.spacing = unit(0.75, "cm"))
+
+PC2_age_gender <- ggplot(Metals_PCA, aes(y=PC2, x=age))+
+  geom_jitter(aes(color=as.factor(Gender)))+
+  scale_color_discrete(name="Gender",
+                       labels=c("Male", "Female"))+
+  xlab("Age")+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        panel.spacing = unit(0.75, "cm"))
+
+grid.arrange(arrangeGrob(PC1_age_gender + theme(legend.position="none"),
+                         PC2_age_gender + theme(legend.position="none"),
+                         nrow=2),
+             mylegend, nrow=1)
+
+PCA_Medians <- Metals_PCA %>%
+  group_by(Pesticides) %>%
+  summarize(median_PC1=round(median(PC1, na.rm = T), digits = 2),
+            median_PC2=round(median(PC2, na.rm = T), digits = 2))
+
+#ggplot(Metals_PCA, aes(y=PC1, x=as.factor(Pesticides)))+
+#  geom_jitter(aes(color=as.factor(Pesticides)))+
+#  geom_hline(data=PCA_Medians, aes(yintercept=median_PC1, color=as.factor(Pesticides)))+
+#  scale_color_discrete(name="Pesticide Home Use",
+#                       labels=c("Yes", "No", "Don't Know"))+
+#  xlab("")+
+#  theme(panel.background = element_rect(fill="#ffffff"),
+#        axis.line = element_line(color="#000000"),
+#        text = element_text(size = 15),
+#        axis.text.x = element_blank(),
+#        axis.ticks.x = element_blank(),
+#        panel.spacing = unit(0.75, "cm"))+
+#  ggtitle("PC Values (With Median) by \nSelf-Reported Home Pesticide Use")
+
+##Pesticides
+PC1_Pesticides <- ggplot(Metals_PCA, aes(y=PC1, x=as.factor(Pesticides)))+
+  geom_boxplot()+
+  geom_jitter(aes(color=as.factor(Pesticides)), alpha=0.3)+
+  scale_color_discrete(name="Pesticides in Workplace",
+                       labels=c("Yes", "No", "Don't Know"))+
+  xlab("")+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        panel.spacing = unit(0.75, "cm"))
+
+PC2_Pesticides <- ggplot(Metals_PCA, aes(y=PC2, x=as.factor(Pesticides)))+
+  geom_boxplot()+
+  geom_jitter(aes(color=as.factor(Pesticides)), alpha=0.3)+
+  scale_color_discrete(name="Pesticides in Workplace",
+                       labels=c("Yes", "No", "Don't Know"))+
+  xlab("")+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        panel.spacing = unit(0.75, "cm"))
+
+mylegend2<-g_legend(PC1_Pesticides)
+
+grid.arrange(arrangeGrob(PC1_Pesticides + theme(legend.position="none"),
+                         PC2_Pesticides + theme(legend.position="none"),
+                         nrow=2),
+             mylegend2, nrow=1)
+
+pesticide_sig <- Metals_PCA %>%
+  filter(Pesticides!=3)
+
+t.test(PC1~as.factor(Pesticides), data=pesticide_sig)
+
+t.test(PC2~as.factor(Pesticides), data=pesticide_sig)
+
+
+##Water Source
+#Water 1: City
+#Water 2: Well
+#Water 3: Bottled
+#Water 4: Other
+#Water 5: Mixed Sources
+PC1_Water <- ggplot(Metals_PCA, aes(y=PC1, x=as.factor(Water_all)))+
+  geom_boxplot()+
+  geom_jitter(aes(color=as.factor(Water_all)), alpha=0.3)+
+  scale_color_discrete(name="Water Source",
+                       labels=c("City", "Well", "Bottled", "Other", "Mixed Sources"))+
+  xlab("")+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        panel.spacing = unit(0.75, "cm"))
+
+PC2_Water <- ggplot(Metals_PCA, aes(y=PC2, x=as.factor(Water_all)))+
+  geom_boxplot()+
+  geom_jitter(aes(color=as.factor(Water_all)), alpha=0.3)+
+   scale_color_discrete(name="Water Source",
+                       labels=c("City", "Well", "Bottled", "Other", "Mixed Sources"))+
+  xlab("")+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        panel.spacing = unit(0.75, "cm"))
+
+mylegend3<-g_legend(PC1_Water)
+
+grid.arrange(arrangeGrob(PC1_Water + theme(legend.position="none"),
+                         PC2_Water + theme(legend.position="none"),
+                         nrow=2),
+             mylegend3, nrow=1)
+
+PC1_by_Water <- aov(PC1~as.factor(Water_all), data=Metals_PCA)
+summary(PC1_by_Water)
+
+PC2_by_Water <- aov(PC2~as.factor(Water_all), data=Metals_PCA)
+summary(PC2_by_Water)
+
+##Recruitment Site
+#1 = CSF
+#2 = RCBH
+#3 = YRMC
+PC1_Site <- ggplot(Metals_PCA, aes(y=PC1, x=as.factor(Site)))+
+  geom_boxplot()+
+  geom_jitter(aes(color=as.factor(Site)), alpha=0.3)+
+  scale_color_discrete(name="Recruitment Site",
+                       labels=c("CSF", "RCBH", "YRMC"))+
+  xlab("")+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        panel.spacing = unit(0.75, "cm"))
+
+PC2_Site <- ggplot(Metals_PCA, aes(y=PC2, x=as.factor(Site)))+
+  geom_boxplot()+
+  geom_jitter(aes(color=as.factor(Site)), alpha=0.3)+
+  scale_color_discrete(name="Recruitment Site",
+                       labels=c("CSF", "RCBH", "YRMC"))+
+  xlab("")+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        panel.spacing = unit(0.75, "cm"))
+
+mylegend4<-g_legend(PC1_Site)
+
+grid.arrange(arrangeGrob(PC1_Site + theme(legend.position="none"),
+                         PC2_Site + theme(legend.position="none"),
+                         nrow=2),
+             mylegend4, nrow=1)
+
+PC1_by_Site <- aov(PC1~as.factor(Site), data=Metals_PCA)
+summary(PC1_by_Site)
+pairwise.t.test(Metals_PCA$PC1, as.factor(Metals_PCA$Site), p.adj="bonf")
+
+PC2_by_Site <- aov(PC2~as.factor(Site), data=Metals_PCA)
+summary(PC2_by_Site)
+pairwise.t.test(Metals_PCA$PC2, as.factor(Metals_PCA$Site), p.adj="bonf")
+
+##Smoking
+#From self-report
+#0: Never smoker
+#1: Former Smoker
+#2: Light/Somedays Smoker
+#3: Every day smoker
+PC1_Smoking <- ggplot(Metals_PCA, aes(y=PC1, x=as.factor(Smoking_Status)))+
+  geom_boxplot()+
+  geom_jitter(aes(color=as.factor(Smoking_Status)), alpha=0.3)+
+    scale_color_discrete(name="Smoking Status",
+                       labels=c("Never", "Former", "Light/Occasional", "HeavyDaily"))+
+  xlab("")+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        panel.spacing = unit(0.75, "cm"))
+
+PC2_Smoking <- ggplot(Metals_PCA, aes(y=PC2, x=as.factor(Smoking_Status)))+
+  geom_boxplot()+
+  geom_jitter(aes(color=as.factor(Smoking_Status)), alpha=0.3)+
+    scale_color_discrete(name="Smoking Status",
+                       labels=c("Never", "Former", "Light/Occasional", "HeavyDaily"))+
+  xlab("")+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        panel.spacing = unit(0.75, "cm"))
+
+mylegend5<-g_legend(PC1_Smoking)
+
+grid.arrange(arrangeGrob(PC1_Smoking + theme(legend.position="none"),
+                         PC2_Smoking + theme(legend.position="none"),
+                         nrow=2),
+             mylegend5, nrow=1)
+
+PC1_by_Smoking <- aov(PC1~as.factor(Smoking_Status), data=subset(Metals_PCA, !is.na(Metals_PCA$Smoking_Status)))
+summary(PC1_by_Smoking)
+
+
+PC2_by_Smoking <- aov(PC2~as.factor(Smoking_Status), data=subset(Metals_PCA, !is.na(Metals_PCA$Smoking_Status)))
+summary(PC2_by_Smoking)
+
+
+##Ethnicity
+#1: Hispanic
+#2: Non-Hispanic
+PC1_Ethnicity <- ggplot(subset(Metals_PCA, !is.na(Metals_PCA$Ethnicity)), aes(y=PC1, x=as.factor(Ethnicity)))+
+  geom_boxplot()+
+  geom_jitter(aes(color=as.factor(Ethnicity)), alpha=0.3)+
+  scale_color_discrete(name="Ethnicity",
+                       labels=c("Hispanic", "Non-Hispanic"))+
+  xlab("")+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        panel.spacing = unit(0.75, "cm"))
+
+PC2_Ethnicity <- ggplot(subset(Metals_PCA, !is.na(Metals_PCA$Ethnicity)), aes(y=PC2, x=as.factor(Ethnicity)))+
+  geom_boxplot()+
+  geom_jitter(aes(color=as.factor(Ethnicity)), alpha=0.3)+
+  scale_color_discrete(name="Ethnicity",
+                       labels=c("Hispanic", "Non-Hispanic"))+
+  xlab("")+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        panel.spacing = unit(0.75, "cm"))
+
+mylegend6<-g_legend(PC1_Ethnicity)
+
+grid.arrange(arrangeGrob(PC1_Ethnicity + theme(legend.position="none"),
+                         PC2_Ethnicity + theme(legend.position="none"),
+                         nrow=2),
+             mylegend6, nrow=1)
+
+t.test(PC1~as.factor(Ethnicity), data=Metals_PCA)
+
+t.test(PC2~as.factor(Ethnicity), data=Metals_PCA)
+
+##Time Lived in Yuma
+
+#1: Less than 6 months
+#2: 6 months to 1 year
+#3: 1 to 3 years
+#4: 3 to 5 years
+#5: More than 5 years
+
+Metals_PCA$Lived_in_Yuma <- factor(Metals_PCA$Lived_in_Yuma, levels = 1:5)
+
+PC1_Yuma_Time <- ggplot(Metals_PCA, aes(y=PC1, x=as.factor(Lived_in_Yuma))) +
+ geom_boxplot() +
+ geom_jitter(aes(color=as.factor(Lived_in_Yuma)), alpha=0.6) +
+ scale_color_discrete(name="Time Lived in Yuma",
+                       labels=c("1"="Less than 6 months", 
+                                "2"="6 months to 1 year", 
+                                "3"="1 to 3 years", 
+                                "4"="3 to 5 years", 
+                                "5"="More than 5 years"),
+                       drop = FALSE) +
+  scale_x_discrete(drop=FALSE)+
+ xlab("") +
+ theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        panel.spacing = unit(0.75, "cm"))
+
+PC2_Yuma_Time <- ggplot(Metals_PCA, aes(y=PC2, x=as.factor(Lived_in_Yuma))) +
+ geom_boxplot() +
+ geom_jitter(aes(color=as.factor(Lived_in_Yuma)), alpha=0.6) +
+ scale_color_discrete(name="Time Lived in Yuma",
+                       labels=c("1"="Less than 6 months", 
+                                "2"="6 months to 1 year", 
+                                "3"="1 to 3 years", 
+                                "4"="3 to 5 years", 
+                                "5"="More than 5 years"),
+                       drop = FALSE) +
+  scale_x_discrete(drop=FALSE)+
+ xlab("") +
+ theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        panel.spacing = unit(0.75, "cm"))
+
+#Extract the legend
+mylegend7 <- g_legend(PC1_Yuma_Time)
+
+#Arrange the plots and the legend
+grid.arrange(arrangeGrob(PC1_Yuma_Time + theme(legend.position="none"),
+                         PC2_Yuma_Time + theme(legend.position="none"),
+                         nrow=2),
+             mylegend7, nrow=1)
+
+##Income
+#1:0-4,999 23 6.9%
+#2:5k-9,999 33 9.9%
+#3:10k-14,999 47 14.2%
+#4:15k-19,999 34 10.2%
+#5:20k-29,999 63 19.0%
+#6:30k-39,999 34 10.2%
+#7:40k-49,999 16 4.8%
+#8:50k-59,999 9 2.7%
+#9:60k-69,999 10 3.0%
+#10:>70k 25 7.5%
+#11:Don't know 15 4.5%
+#12:Refused 14 4.2%
+
+PC1_Income <- ggplot(subset(Metals_PCA ,!is.na(Metals_PCA$Income)), aes(y=PC1, x=as.factor(Income)))+
+  geom_boxplot()+
+  geom_jitter(aes(color=as.factor(Income)), alpha=0.3)+
+    scale_color_discrete(name="Income Group",
+                       labels=c("0-4,999", "5k-9,999", "10k-14,999", "15k-19,999", "20k-29,999", "30k-39,999", "40k-49,999", "50k-59,999", "60k-69,999", "70k+", "Don't know", "Refused"),
+                       guide=F)+
+  xlab("")+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        axis.text.x = element_blank(),
+        #axis.ticks.x = element_blank(),
+        panel.spacing = unit(0.75, "cm"))
+
+PC2_Income <- ggplot(subset(Metals_PCA ,!is.na(Metals_PCA$Income)), aes(y=PC2, x=as.factor(Income)))+
+  geom_boxplot()+
+  geom_jitter(aes(color=as.factor(Income)), alpha=0.3)+
+    scale_color_discrete(name="Income Group",
+                       labels=c("0-4,999", "5k-9,999", "10k-14,999", "15k-19,999", "20k-29,999", "30k-39,999", "40k-49,999", "50k-59,999", "60k-69,999", "70k+", "Don't know", "Refused"),
+                       guide=F)+
+  scale_x_discrete(name="\nIncome Group",
+                       labels=c("0-4,999", "5k-9,999", "10k-14,999", "15k-19,999", "20k-29,999", "30k-39,999", "40k-49,999", "50k-59,999", "60k-69,999", "70k+", "Don't know", "Refused"))+
+  xlab("Income Group")+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        #axis.ticks.x = element_blank(),
+        panel.spacing = unit(0.75, "cm"))
+
+mylegend5<-g_legend(PC1_Smoking)
+
+grid.arrange(PC1_Income, PC2_Income, nrow=2)
+
+PC1_by_Income <- aov(PC1~as.factor(Income), data=subset(Metals_PCA, !is.na(Metals_PCA$Income)))
+summary(PC1_by_Income)
+
+PC2_by_Income <- aov(PC2~as.factor(Income), data=subset(Metals_PCA, !is.na(Metals_PCA$Income)))
+summary(PC2_by_Income)
+
+
+##Poverty
+#1: Below Pov Line
+#0: Not Below Pov Line
+PC1_Pov <- ggplot(subset(Metals_PCA, !is.na(Metals_PCA$Below_Pov)), aes(y=PC1, x=as.factor(Below_Pov)))+
+  geom_boxplot()+
+  geom_jitter(aes(color=as.factor(Below_Pov)), alpha=0.3)+
+  scale_color_discrete(name="Poverty Line",
+                       labels=c("Above", "Below"))+
+  xlab("")+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        panel.spacing = unit(0.75, "cm"))
+
+PC2_Pov <- ggplot(subset(Metals_PCA, !is.na(Metals_PCA$Below_Pov)), aes(y=PC2, x=as.factor(Below_Pov)))+
+  geom_boxplot()+
+  geom_jitter(aes(color=as.factor(Below_Pov)), alpha=0.3)+
+  scale_color_discrete(name="Poverty Line",
+                       labels=c("Above", "Below"))+
+  xlab("")+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        panel.spacing = unit(0.75, "cm"))
+
+mylegend6<-g_legend(PC1_Pov)
+
+grid.arrange(arrangeGrob(PC1_Pov + theme(legend.position="none"),
+                         PC2_Pov + theme(legend.position="none"),
+                         nrow=2),
+             mylegend6, nrow=1)
+
+t.test(PC1~as.factor(Below_Pov), data=Metals_PCA)
+
+t.test(PC2~as.factor(Below_Pov), data=Metals_PCA)
+
+
+ggplot(Metals_PCA, aes(x=PC1, y=Num_children))+
+    geom_point()+
+    geom_smooth(method = lm, se=F)+
+    theme(legend.position = "none",
+          panel.background = element_rect(fill="#ffffff"),
+          axis.text.x=element_text(angle=60, hjust=1),
+          axis.line = element_line(color="#000000"))+
+    xlab("PC1")+
+    ylab("Number of Children")
+
+ggplot(subset(Metals_PCA, !is.na(Metals_PCA$Num_children)), aes(y=PC1, x=as.factor(Num_children)))+
+    geom_boxplot()+
+    theme(legend.position = "none",
+          panel.background = element_rect(fill="#ffffff"),
+          axis.text.x=element_text(angle=60, hjust=1),
+          axis.line = element_line(color="#000000"))+
+    ylab("PC1")+
+    xlab("Number of Children")
+
+ggplot(subset(Metals_PCA, !is.na(Metals_PCA$Residence_type)), aes(y=PC1, x=as.factor(Residence_type)))+
+    geom_boxplot()+
+  scale_x_discrete(labels = c("House", "Apt", "Trailer/Mobile", "Group", "Other"))+
+    theme(legend.position = "none",
+          panel.background = element_rect(fill="#ffffff"),
+          axis.text.x=element_text(angle=60, hjust=1),
+          axis.line = element_line(color="#000000"))+
+    ylab("PC1")+
+    xlab("Residence Type")
+
+ggplot(subset(Metals_PCA, !is.na(Metals_PCA$Health_compare)), aes(y=PC1, x=as.factor(Health_compare)))+
+    geom_boxplot()+
+  scale_x_discrete(labels = c("Better", "Worse", "Same", "Don't know"))+
+    theme(legend.position = "none",
+          panel.background = element_rect(fill="#ffffff"),
+          axis.text.x=element_text(angle=60, hjust=1),
+          axis.line = element_line(color="#000000"))+
+    ylab("PC1")+
+    xlab("Health Changes")
+
+ggplot(subset(Metals_PCA, !is.na(Metals_PCA$Education)), aes(y=PC1, x=as.factor(Education)))+
+    geom_boxplot()+
+  scale_x_discrete(labels = c("None", "Elementary", "Middle", "High", "College", "Advanced", "Other"))+
+    theme(legend.position = "none",
+          panel.background = element_rect(fill="#ffffff"),
+          axis.text.x=element_text(angle=60, hjust=1),
+          axis.line = element_line(color="#000000"))+
+    ylab("PC1")+
+    xlab("Education")
+
+```
+

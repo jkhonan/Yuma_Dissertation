@@ -1,0 +1,691 @@
+---
+title: "Yuma_Metals_CART_Analysis_Class"
+author: "Jenna Honan"
+date: "2023-07-18"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+## Required libraries
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(dplyr)
+```
+
+# CART Analysis
+```{r CART}
+Metals$High_Cu <- ifelse(Metals$Cu65>=10, "High", 
+                             ifelse(is.na(Metals$Cu65), NA, "Low"))
+
+Metals$High_Hg <- ifelse(Metals$Log_Hg202_Imp>=log10(1), "High", 
+                             ifelse(is.na(Metals$Log_Hg202_Imp), NA, "Low"))
+
+Metals$High_Mn <- ifelse(Metals$Mn55>=1, "High", 
+                             ifelse(is.na(Metals$Mn55), NA, "Low"))
+
+Metals$High_Pb <- ifelse(Metals$Pb208>=10, "High", 
+                             ifelse(is.na(Metals$Pb208), NA, "Low"))
+
+Metals$High_U <- ifelse(Metals$U238>=0.1, "High", 
+                             ifelse(is.na(Metals$U238), NA, "Low"))
+
+Metals_CART <- Metals %>% 
+  dplyr::select(
+Site,
+Gender,
+Armed_forces,
+Ethnicity,
+Num_children,
+Education,
+Birth_country,
+Num_in_household,
+Child_under_18,
+Farmer,
+Pesticides,
+Lived_in_Yuma,
+Yuma_pregnant_mom,
+Born_in_Yuma,
+Residence_type,
+Own_rent,
+Homeless,
+Health_care,
+Healthcare_lastyear,
+Doctor_time,
+ER_visits,
+General_health,
+Health_compare,
+Weight,
+Overweight,
+bmi,
+age,
+#Income,
+#TSH,
+#TotalT4,
+Cortisol,
+emr_weight,
+#fT3,
+#fT4,
+#TotalT3,
+emr_bmi,
+emr_obesity,
+#Site_Collapsed,
+Result_C_mg_dL,
+#Result_P_ng_mL,
+Below_Pov,
+Race,
+Water_all,
+#Log_Cu65,
+#Log_Hg202_Imp,
+#Log_U238,
+#Log_Mn55,
+#Log_Cd111,
+#Log_Pb208,
+High_Cu,
+High_Mn,
+High_Hg,
+High_Pb,
+High_U
+#C_Corrected_P,
+#any_thyroid_Dummy_EMR_or_SR
+)
+#I know it would have been faster to remove, but I wanted a visual of what all was going into the new dataframe.
+
+
+#Tried sapply, but wasnt working so I'll do it manually
+Metals_CART$Num_in_household <- as.numeric(Metals_CART$Num_in_household)
+Metals_CART$Child_under_18 <- as.numeric(Metals_CART$Child_under_18)
+Metals_CART$Weight <- as.numeric(Metals_CART$Weight)
+Metals_CART$emr_bmi <- as.numeric(Metals_CART$emr_bmi)
+#Metals_CART$Log_emr_bmi <- log10(as.numeric(Metals_CART$emr_bmi))
+Metals_CART$bmi <- as.numeric(Metals_CART$bmi)
+#Metals_CART$Log_bmi <- log10(as.numeric(Metals_CART$bmi))
+#Metals_CART$Result_P_ng_mL <- as.numeric(Metals_CART$Result_P_ng_mL)
+Metals_CART$Result_C_mg_dL <- as.numeric(Metals_CART$Result_C_mg_dL)
+#Metals_CART$Log_Result_P_ng_mL <- log10(as.numeric(Metals_CART$Result_P_ng_mL))
+#Metals_CART$Log_Result_C_mg_dL <- log10(as.numeric(Metals_CART$Result_C_mg_dL))
+#Metals_CART$Log_C_Corrected_P <- log10(as.numeric(Metals_CART$Result_P_ng_mL)/as.numeric(Metals_CART$Result_C_ng_mL))
+#Metals_CART$Log_Mn55 <- as.numeric(Metals_CART$Log_Mn55)
+#Metals_CART$Log_Cd111 <- as.numeric(Metals_CART$Log_Cd111)
+#Metals_CART$Log_Pb208 <- as.numeric(Metals_CART$Log_Pb208)
+#Metals_CART$Log_Cu65 <- as.numeric(Metals_CART$Log_Cu65)
+#Metals_CART$Log_Hg202_Imp <- as.numeric(Metals_CART$Log_Hg202_Imp)
+#Metals_CART$Log_U238 <- as.numeric(Metals_CART$Log_U238)
+Metals_CART$Num_children <- as.numeric(Metals_CART$Num_children)
+Metals_CART$age <- as.numeric(Metals_CART$age)
+Metals_CART$emr_weight <- as.numeric(Metals_CART$emr_weight)
+Metals_CART$Cortisol <- as.numeric(Metals_CART$Cortisol)
+#Metals_CART$Log_Cortisol <- log10(as.numeric(Metals_CART$Cortisol))
+#Metals_CART$TSH <- as.numeric(Metals_CART$TSH)
+#Metals_CART$Log_TSH <- log10(as.numeric(Metals_CART$TSH))
+#Metals_CART$fT4 <- as.numeric(Metals_CART$fT4)
+#Metals_CART$Log_fT4 <- log10(as.numeric(Metals_CART$fT4))
+#Metals_CART$fT3 <- as.numeric(Metals_CART$fT3)
+#Metals_CART$Log_fT3 <- log10(as.numeric(Metals_CART$fT3))
+#Metals_CART$TotalT3 <- as.numeric(Metals_CART$TotalT3)
+#Metals_CART$Log_TotalT3 <- log10(as.numeric(Metals_CART$TotalT3))
+#Metals_CART$TotalT4 <- as.numeric(Metals_CART$TotalT4)
+#Metals_CART$Log_TotalT4 <- log10(as.numeric(Metals_CART$TotalT4))
+Metals_CART$Armed_forces <- as.factor(Metals_CART$Armed_forces)
+Metals_CART$Below_Pov <- as.factor(Metals_CART$Below_Pov)
+Metals_CART$Birth_country <- as.factor(Metals_CART$Birth_country)
+Metals_CART$Born_in_Yuma <- as.factor(Metals_CART$Born_in_Yuma)
+Metals_CART$Doctor_time <- as.factor(Metals_CART$Doctor_time)
+Metals_CART$Education <- as.factor(Metals_CART$Education)
+Metals_CART$emr_obesity <- as.factor(Metals_CART$emr_obesity)
+Metals_CART$ER_visits <- as.factor(Metals_CART$ER_visits)
+Metals_CART$Ethnicity <- as.factor(Metals_CART$Ethnicity)
+Metals_CART$Farmer <- as.factor(Metals_CART$Farmer)
+Metals_CART$Gender <- as.factor(Metals_CART$Gender)
+Metals_CART$General_health <- as.factor(Metals_CART$General_health)
+Metals_CART$Health_care <- as.factor(Metals_CART$Health_care)
+Metals_CART$Health_compare <- as.factor(Metals_CART$Health_compare)
+Metals_CART$Healthcare_lastyear <- as.factor(Metals_CART$Healthcare_lastyear)
+#Metals_CART$Income <- as.factor(Metals_CART$Income)
+Metals_CART$Lived_in_Yuma <- as.factor(Metals_CART$Lived_in_Yuma)
+#Metals_CART$Marital_status <- as.factor(Metals_CART$Marital_status)
+Metals_CART$Overweight <- as.factor(Metals_CART$Overweight)
+Metals_CART$Own_rent <- as.factor(Metals_CART$Own_rent)
+Metals_CART$Pesticides <- as.factor(Metals_CART$Pesticides)
+Metals_CART$Residence_type <- as.factor(Metals_CART$Residence_type)
+Metals_CART$Site <- as.factor(Metals_CART$Site)
+Metals_CART$Water_all <- as.factor(Metals_CART$Water_all)
+Metals_CART$Yuma_pregnant_mom <- as.factor(Metals_CART$Yuma_pregnant_mom)
+Metals_CART$High_Cu <- as.factor(Metals_CART$High_Cu)
+Metals_CART$High_Mn <- as.factor(Metals_CART$High_Mn)
+Metals_CART$High_Hg <- as.factor(Metals_CART$High_Hg)
+Metals_CART$High_Pb <- as.factor(Metals_CART$High_Pb)
+Metals_CART$High_U <- as.factor(Metals_CART$High_U)
+#Metals_CART$any_thyroid_Dummy_EMR_or_SR <- as.factor(Metals_CART$any_thyroid_Dummy_EMR_or_SR)
+
+# Inspect the data
+sample_n(Metals_CART, 3)
+
+# Changing column names for better trees
+colnames(Metals_CART)
+
+Metals_CART <- Metals_CART %>%
+  rename(
+    "Recruitment Site" = Site,
+    "Sex" = Gender,
+    "Ever in Military" = Armed_forces,
+    "# Children" = Num_children,
+    "Birth Country" = Birth_country,
+    "# Children in Household" = Num_in_household,
+    "# Children < 18y" = Child_under_18,
+    "Farmwork in Last Year" = Farmer,
+    "Pesticide Use at Work" = Pesticides,
+    "Time in Yuma" = Lived_in_Yuma,
+    "Mom Pregnant in Yuma" = Yuma_pregnant_mom,
+    "Born in Yuma" = Born_in_Yuma,
+    "Residence Type" = Residence_type,
+    "Own or Rent" = Own_rent,
+    "Ever Homeless" = Homeless,
+    "Have Health Coverage" = Health_care,
+    "Have Health Coverage Last Year" = Healthcare_lastyear,
+    "Time Since Dr Visit" = Doctor_time,
+    "# ER Visits Last Year" = ER_visits,
+    "General Health Rating" = General_health,
+    "Health Compared to Last Year" = Health_compare,
+    "Weight (lbs)" = Weight,
+    "Ever Overweight" = Overweight,
+    "BMI" = bmi,
+    "Age" = age,
+    "Cortisol (ng/mL)" = Cortisol,
+    "EMR Weight (lbs)" = emr_weight,
+    "EMR BMI" = emr_bmi,
+    "EMR Obese" = emr_obesity,
+    #"CSF or Other" = Site_Collapsed,
+    "Creatinine (mg/dL)" = Result_C_mg_dL,
+    "Below 2018 Poverty Line" = Below_Pov,
+    "Water Source" = Water_all,
+    #"Log10 Copper" = Log_Cu65,
+    #"Log10 Mercury" = Log_Hg202_Imp,
+    #"Log10 Uranium" = Log_U238,
+    #"Log10 Manganese" = Log_Mn55,
+    #"Log10 Cadmium" = Log_Cd111,
+    #"Log10 Lead" = Log_Pb208,
+    #"Thyroid Case" = any_thyroid_Dummy_EMR_or_SR,
+    #"Log10 EMR BMI" = Log_emr_bmi,
+    #"Log10 BMI" = Log_bmi,
+    #"Log10 Creatinine" = Log_Result_C_mg_dL,
+    #"Log10 Cortisol" = Log_Cortisol,
+    "High Cu" = High_Cu,
+    "High Hg" = High_Hg,
+    "High Mn" = High_Mn,
+    "High Pb" = High_Pb,
+    "High U" = High_U
+  )
+```
+
+#Making the plots easier to read
+```{r plot_updates}
+#Recruitment Site:
+Metals_CART$`Recruitment Site` <- ifelse(Metals_CART$`Recruitment Site`==1, "CSF",
+                                          ifelse(Metals_CART$`Recruitment Site`==2, "RCBH",
+                                                 ifelse(Metals_CART$`Recruitment Site`==3, "YRMC", NA)))
+
+Metals_CART$`Recruitment Site` <- as.factor(Metals_CART$`Recruitment Site`)
+
+#Water: 
+Metals_CART$`Water Source` <- ifelse(Metals_CART$`Water Source`==1, "Tap",
+                                      ifelse(Metals_CART$`Water Source`==2, "Well",
+                                             ifelse(Metals_CART$`Water Source`==3, "Bottled",
+                                                    ifelse(Metals_CART$`Water Source`==4, "Other",
+                                                           ifelse(Metals_CART$`Water Source`==5, "Mixed",NA)))))
+
+Metals_CART$`Water Source` <- as.factor(Metals_CART$`Water Source`)
+
+#Residence Type:
+Metals_CART$`Residence Type` <- ifelse(Metals_CART$`Residence Type`==1, "House",
+                                        ifelse(Metals_CART$`Residence Type`==2, "Apt",
+                                               ifelse(Metals_CART$`Residence Type`==3, "Manufactured",
+                                                      ifelse(Metals_CART$`Residence Type`==4, "Hotel/Motel",
+                                                             ifelse(Metals_CART$`Residence Type`==5, "Homeless",
+                                                                    ifelse(Metals_CART$`Residence Type`==6, "Group", 
+                                                                           ifelse(Metals_CART$`Residence Type`==7, "Other", 
+                                                                                  ifelse(Metals_CART$`Residence Type`==8, "Refused",NA))))))))
+
+Metals_CART$`Residence Type` <- as.factor(Metals_CART$`Residence Type`)
+
+#Education:
+Metals_CART$Education <- ifelse(Metals_CART$Education==1, "None", 
+                                 ifelse(Metals_CART$Education==2, "Elementary",
+                                        ifelse(Metals_CART$Education==3, "Middle",
+                                               ifelse(Metals_CART$Education==4, "High",
+                                                      ifelse(Metals_CART$Education==5, "College",
+                                                             ifelse(Metals_CART$Education==6, "Advanced", 
+                                                                    ifelse(Metals_CART$Education==7, "Other", NA)))))))
+
+Metals_CART$Education <- as.factor(Metals_CART$Education)
+
+#Health Compared to last year:
+Metals_CART$`Health Compared to Last Year` <- ifelse(Metals_CART$`Health Compared to Last Year`==1, "Better", 
+                                                      ifelse(Metals_CART$`Health Compared to Last Year`==2, "Worse",
+                                                             ifelse(Metals_CART$`Health Compared to Last Year`==3, "Same",
+                                                                    ifelse(Metals_CART$`Health Compared to Last Year`==4, "Don't know",
+                                                                           ifelse(Metals_CART$`Health Compared to Last Year`==5, "Refused", NA)))))
+
+Metals_CART$`Health Compared to Last Year` <- as.factor(Metals_CART$`Health Compared to Last Year`)
+
+
+#Ethnicity:
+Metals_CART$Ethnicity <- ifelse(Metals_CART$Ethnicity==1, "Hispanic",
+                                 ifelse(Metals_CART$Ethnicity==2, "Non-Hispanic", NA))
+
+Metals_CART$Ethnicity <- as.factor(Metals_CART$Ethnicity)
+
+#Race:
+Metals_CART$Race <- ifelse(Metals_CART$Race==1,"American Indian or Alaska Native",
+                            ifelse(Metals_CART$Race==2, "Asian",
+                                   ifelse(Metals_CART$Race==3, "Black or AA",
+                                          ifelse(Metals_CART$Race==4, "Native Hawaiian or Pacific Islander",
+                                                 ifelse(Metals_CART$Race==5, "White",
+                                                        ifelse(Metals_CART$Race==6, "Other",
+                                                               ifelse(Metals_CART$Race==7, "Don't know",
+                                                                      ifelse(Metals_CART$Race==8, "Refused",
+                                                                             ifelse(Metals_CART$Race==9, "Multiple", NA)))))))))
+
+Metals_CART$Race <- as.factor(Metals_CART$Race)
+
+#Gender
+Metals_CART$Sex <- ifelse(Metals_CART$Sex==1, "Male",
+                          ifelse(Metals_CART$Sex==2, "Female", NA))
+
+Metals_CART$Sex <- as.factor(Metals_CART$Sex)
+
+#Housing Status
+Metals_CART$`Own or Rent` <- ifelse(Metals_CART$`Own or Rent`==1, "Own",
+                                    ifelse(Metals_CART$`Own or Rent`==2, "Rent",
+                                           ifelse(Metals_CART$`Own or Rent`==3, "Other",
+                                                  ifelse(Metals_CART$`Own or Rent`==4, "Don't Know",
+                                                         ifelse(Metals_CART$`Own or Rent`==5, "Refused", NA)))))
+
+Metals_CART$`Own or Rent` <- as.factor(Metals_CART$`Own or Rent`)
+
+#Race:
+Metals_CART$Race <- ifelse(Metals_CART$Race==1,"American Indian or Alaska Native",
+                            ifelse(Metals_CART$Race==2, "Asian",
+                                   ifelse(Metals_CART$Race==3, "Black or AA",
+                                          ifelse(Metals_CART$Race==4, "Native Hawaiian or Pacific Islander",
+                                                 ifelse(Metals_CART$Race==5, "White",
+                                                        ifelse(Metals_CART$Race==6, "Other",
+                                                               ifelse(Metals_CART$Race==7, "Don't know",
+                                                                      ifelse(Metals_CART$Race==8, "Refused",
+                                                                             ifelse(Metals_CART$Race==9, "Multiple", NA)))))))))
+
+Metals_CART$Race <- as.factor(Metals_CART$Race)
+
+#Gender
+Metals_CART$Sex <- ifelse(Metals_CART$Sex==1, "Male",
+                          ifelse(Metals_CART$Sex==2, "Female", NA))
+
+Metals_CART$Sex <- as.factor(Metals_CART$Sex)
+
+#Housing Status
+Metals_CART$`Own or Rent` <- ifelse(Metals_CART$`Own or Rent`==1, "Own",
+                                    ifelse(Metals_CART$`Own or Rent`==2, "Rent",
+                                           ifelse(Metals_CART$`Own or Rent`==3, "Other",
+                                                  ifelse(Metals_CART$`Own or Rent`==4, "Don't Know",
+                                                         ifelse(Metals_CART$`Own or Rent`==5, "Refused", NA)))))
+
+Metals_CART$`Own or Rent` <- as.factor(Metals_CART$`Own or Rent`)
+
+#Birth Country
+Metals_CART$`Birth Country` <- ifelse(Metals_CART$`Birth Country`==1, "U.S.",
+                                      ifelse(Metals_CART$`Birth Country`==2, "Other",
+                                             ifelse(Metals_CART$`Birth Country`==3, "Don't Know",
+                                                    ifelse(Metals_CART$`Birth Country`==4, "Refused", NA))))
+Metals_CART$`Birth Country` <- as.factor(Metals_CART$`Birth Country`)
+
+#Farmworker
+Metals_CART$`Farmwork in Last Year` <- ifelse(Metals_CART$`Farmwork in Last Year`==1, "Farmer",
+                                              ifelse(Metals_CART$`Farmwork in Last Year`==2, "Non-Farmer", NA))
+
+Metals_CART$`Farmwork in Last Year` <- as.factor(Metals_CART$`Farmwork in Last Year`)
+
+#Healthcare Last Year
+Metals_CART$`Have Health Coverage Last Year` <- ifelse(Metals_CART$`Have Health Coverage Last Year`==1, "Yes",
+                                                       ifelse(Metals_CART$`Have Health Coverage Last Year`==2, "No", 
+                                                              ifelse(Metals_CART$`Have Health Coverage Last Year`==3, "Don't Know", NA)))
+
+Metals_CART$`Have Health Coverage Last Year` <- as.factor(Metals_CART$`Have Health Coverage Last Year`)
+
+#Time in Yuma
+Metals_CART$`Time in Yuma` <- ifelse(Metals_CART$`Time in Yuma`==1, "<6mo",
+                                     ifelse(Metals_CART$`Time in Yuma`==2, ">=6mo & <1yr",
+                                            ifelse(Metals_CART$`Time in Yuma`==3, ">=1yr & <3yr",
+                                                   ifelse(Metals_CART$`Time in Yuma`==4, ">=3yr & <5yr",
+                                                          ifelse(Metals_CART$`Time in Yuma`==5,">=5yr", NA)))))
+
+Metals_CART$`Time in Yuma` <- as.factor(Metals_CART$`Time in Yuma`)
+
+#Time since doc visit
+Metals_CART$`Time Since Dr Visit` <- ifelse(Metals_CART$`Time Since Dr Visit`==1, "<6mo",
+                                            ifelse(Metals_CART$`Time Since Dr Visit`==2,">=6mo & <1yr",
+                                                   ifelse(Metals_CART$`Time Since Dr Visit`==3, ">=1yr & <2yr",
+                                                          ifelse(Metals_CART$`Time Since Dr Visit`==4,">=2yr & <5yr",
+                                                                 ifelse(Metals_CART$`Time Since Dr Visit`==5,">=5yr",
+                                                                        ifelse(Metals_CART$`Time Since Dr Visit`==6,"Never",
+                                                                               ifelse(Metals_CART$`Time Since Dr Visit`==7,"Don't Know",
+                                                                                      ifelse(Metals_CART$`Time Since Dr Visit`==8,"Refused", NA))))))))
+
+Metals_CART$`Time Since Dr Visit` <- as.factor(Metals_CART$`Time Since Dr Visit`)
+
+#Pesticides
+Metals_CART$`Pesticide Use at Work` <- ifelse(Metals_CART$`Pesticide Use at Work`==1, "Yes", 
+                                              ifelse(Metals_CART$`Pesticide Use at Work`==2, "No",
+                                                     ifelse(Metals_CART$`Pesticide Use at Work`==3, "Don't Know",
+                                                            ifelse(Metals_CART$`Pesticide Use at Work`==4, "Refused", NA))))
+
+Metals_CART$`Pesticide Use at Work` <- as.factor(Metals_CART$`Pesticide Use at Work`)
+
+#Pov Line
+Metals_CART$`Below 2018 Poverty Line` <- ifelse(Metals_CART$`Below 2018 Poverty Line`==1, "Yes",
+                                                ifelse(Metals_CART$`Below 2018 Poverty Line`==0, "No", NA))
+
+Metals_CART$`Below 2018 Poverty Line` <- as.factor(Metals_CART$`Below 2018 Poverty Line`)
+
+#Ever Overweight
+Metals_CART$`Ever Overweight` <- ifelse(Metals_CART$`Ever Overweight`==1, "Yes",
+                                        ifelse(Metals_CART$`Ever Overweight`==2, "No",
+                                               ifelse(Metals_CART$`Ever Overweight`==3, "Don't Know",
+                                                      ifelse(Metals_CART$`Ever Overweight`==4, "Refused", NA))))
+
+Metals_CART$`Ever Overweight` <- as.factor(Metals_CART$`Ever Overweight`)
+```
+
+###Cadmium
+```{r cadmium}
+# Split the data into training and test set
+#Removing other metals from the Cd analysis. Assuming based on the PCA that the metals are high together, so it makes sense that they would have strong associations. But we care more about the demographics / behaviors. 
+#Metals_CART_Cd <- Metals_CART %>% 
+#  dplyr::select(-`Log10 Copper`, -`Log10 Manganese`, -`Log10 Mercury`, -`Log10 Lead`, #-`Log10 Uranium`, -PC1, -PC2)
+#sample(1:100000000,1) #used to provide seed number in line below
+#set.seed(16976610)
+#training.samples <- createDataPartition(Metals_CART_Cd$`Log10 Cadmium`, times = 1, p = #0.8, list = F)
+#train.data  <- Metals_CART_Cd[training.samples, ]
+#test.data <- Metals_CART_Cd[-training.samples, ]
+#
+#train.data <- as.data.frame(train.data)
+
+#png("CART_Cd_plot.png", width=1400, height=800, res=300)
+#model.Cd <- rpart(`Log10 Cadmium` ~., data = train.data)
+#par(xpd = NA) # otherwise on some devices the text is clipped
+#prp(model.Cd, fallen.leaves=FALSE, tweak=1.1, varlen=35, faclen=4, uniform=TRUE)
+#dev.off()
+
+#png("CART_Cd_plot_pruned.png", width=2300, height=800, res=300)
+#model.Cd.pruned <- prune(model.Cd, cp = 0.02)
+#par(xpd = NA) # otherwise on some devices the text is clipped
+#prp(model.Cd.pruned, fallen.leaves=FALSE, tweak=1.1, varlen=35, faclen=4, uniform=TRUE)
+#dev.off()
+
+#Cadmium_CART_Pruned <- rpart.plot(model.Cd.pruned, fallen.leaves=FALSE, tweak=1.1, varlen=35, faclen=4, uniform=TRUE)
+
+#Testing how well tree predicts the test data
+#pred.Cd_pruned <- predict(model.Cd.pruned, test.data, type="vector")
+
+#Mean Absolute Error
+#mean(abs(pred.Cd_pruned - test.data$`Log10 Cadmium`))
+
+#Root Mean Squared Error
+#sqrt(mean((pred.Cd_pruned - test.data$`Log10 Cadmium`)^2))
+
+#R-squared 
+#cor(pred.Cd_pruned, test.data$`Log10 Cadmium`)^2 #0.04%
+
+#What about unpruned results?
+#Testing how well tree predicts the test data
+#pred.Cd_full <- predict(model.Cd, test.data, type="vector")
+
+#Mean Absolute Error
+#mean(abs(pred.Cd_full - test.data$`Log10 Cadmium`))
+
+#Root Mean Squared Error
+#sqrt(mean((pred.Cd_full - test.data$`Log10 Cadmium`)^2))
+
+#R-squared 
+#cor(pred.Cd_full, test.data$`Log10 Cadmium`)^2 #0.15%
+```
+
+###Copper
+```{r copper}
+# Split the data into training and test set
+#Removing other metals from the Cu analysis. 
+Metals_CART_Cu <- Metals_CART %>% 
+  dplyr::select(-`High Hg`, -`High Mn`, -`High Pb`, -`High U`)
+sample(1:100000000,1)
+set.seed(77923612)
+training.samples <- createDataPartition(Metals_CART_Cu$`High Cu`, times = 1, p = 0.8, list = F)
+train.data  <- Metals_CART_Cu[training.samples, ]
+test.data <- Metals_CART_Cu[-training.samples, ]
+
+train.data <- as.data.frame(train.data)
+
+png("CART_Cu_plot.png2", width=2000, height=1100, res=300)
+model.Cu <- rpart(`High Cu` ~., data = train.data, control=rpart.control(cp=.0001))
+par(xpd = NA) # otherwise on some devices the text is clipped
+prp(model.Cu, fallen.leaves=FALSE, tweak=1.1, varlen=35, faclen=0, extra=1, uniform=TRUE, yes.text="true", no.text="false")
+dev.off()
+
+png("CART_Cu_plot_pruned2.png", width=5000, height=2000, res=300)
+model.Cu.pruned <- prune(model.Cu, cp = 0.02)
+par(xpd = NA) # otherwise on some devices the text is clipped
+prp(model.Cu.pruned, fallen.leaves=FALSE, tweak=1.1, varlen=35, faclen=0, extra=1, uniform=TRUE, yes.text="true", no.text="false")
+dev.off()
+
+summary(model.Cu.pruned)
+
+#Testing how well tree predicts the test data
+pred.Cu_pruned <- predict(model.Cu.pruned, test.data, type="class")
+table(test.data["High Cu"])
+table(pred.Cu_pruned)
+sum(!is.na(pred.Cu_pruned))
+37/40 #Number correctly predicted = 92.5%
+```
+
+###Mercury
+```{r mercury}
+# Split the data into training and test set
+#Removing other metals from the Cd analysis. 
+Metals_CART_Hg <- Metals_CART %>% 
+  dplyr::select(-`High Cu`, -`High Mn`, -`High Pb`, -`High U`)
+sample(1:100000000,1)
+set.seed(86585297)
+training.samples <- createDataPartition(Metals_CART_Hg$`High Hg`, times = 1, p = 0.8, list = F)
+train.data  <- Metals_CART_Hg[training.samples, ]
+test.data <- Metals_CART_Hg[-training.samples, ]
+
+train.data <- as.data.frame(train.data)
+
+png("CART_Hg_plot2.png", width=5000, height=1500, res=300)
+model.Hg <- rpart(`High Hg` ~., data = train.data, control=rpart.control(cp=.0001))
+par(xpd = NA) # otherwise on some devices the text is clipped
+prp(model.Hg, fallen.leaves=FALSE, tweak=1.1, varlen=35, faclen=0, extra=1, uniform=TRUE, yes.text="true", no.text="false")
+dev.off()
+
+png("CART_Hg_plot_pruned2.png", width=5000, height=2000, res=300)
+model.Hg.pruned <- prune(model.Hg, cp = 0.02)
+par(xpd = NA) # otherwise on some devices the text is clipped
+prp(model.Hg.pruned, fallen.leaves=FALSE, tweak=1.1, varlen=35, faclen=0, extra=1, uniform=TRUE, yes.text="true", no.text="false")
+dev.off()
+
+summary(model.Hg.pruned)
+
+#Testing how well tree predicts the test data
+pred.Hg_pruned <- predict(model.Hg.pruned, test.data, type="class")
+table(test.data["High Hg"])
+table(pred.Hg_pruned)
+sum(!is.na(pred.Hg_pruned))
+39/41 #Number correctly predicted = 95.1%
+```
+
+###Manganese
+```{r manganese}
+# Split the data into training and test set
+#Removing other metals from the Mn analysis. 
+Metals_CART_Mn <- Metals_CART %>% 
+  dplyr::select(-`High Cu`, -`High Hg`, -`High Pb`, -`High U`)
+sample(1:100000000,1)
+set.seed(96406352) #96406352
+training.samples <- createDataPartition(Metals_CART_Mn$`High Mn`, times = 1, p = 0.8, list = F)
+train.data  <- Metals_CART_Mn[training.samples, ]
+test.data <- Metals_CART_Mn[-training.samples, ]
+
+train.data <- as.data.frame(train.data)
+
+png("CART_Mn_plot2.png", width=2000, height=1100, res=300)
+model.Mn <- rpart(`High Mn` ~., data = train.data, control=rpart.control(cp=.0001))
+par(xpd = NA) # otherwise on some devices the text is clipped
+prp(model.Mn, fallen.leaves=FALSE, tweak=1.1, varlen=35, faclen=0, extra=1, uniform=TRUE, yes.text="true", no.text="false")
+dev.off()
+
+png("CART_Mn_plot_pruned2.png", width=5000, height=2000, res=300)
+model.Mn.pruned <- prune(model.Mn, cp = 0.02)
+par(xpd = NA) # otherwise on some devices the text is clipped
+prp(model.Mn.pruned, fallen.leaves=FALSE, tweak=1.1, varlen=35, faclen=0, extra=1, uniform=TRUE, yes.text="true", no.text="false")
+dev.off()
+
+summary(model.Mn.pruned)
+
+#Testing how well tree predicts the test data
+pred.Mn_pruned <- predict(model.Mn.pruned, test.data, type="class")
+table(test.data["High Mn"])
+table(pred.Mn_pruned)
+sum(!is.na(pred.Mn_pruned))
+38/41 #Number correctly predicted = 92.7%
+```
+
+###Lead
+```{r lead}
+#Split the data into training and test set
+#Removing other metals from the Mn analysis.
+Metals_CART_Pb <- Metals_CART %>% 
+  dplyr::select(-`High Cu`, -`High Hg`, -`High Mn`, -`High U`)
+sample(1:100000000,1)
+set.seed(14364002)
+training.samples <- createDataPartition(Metals_CART_Pb$`High Pb`, times = 1, p = 0.8, list = F)
+train.data  <- Metals_CART_Pb[training.samples, ]
+test.data <- Metals_CART_Pb[-training.samples, ]
+
+train.data <- as.data.frame(train.data)
+
+png("CART_Pb_plot2.png", width=2000, height=1100, res=300)
+model.Pb <- rpart(`High Pb` ~., data = train.data, control=rpart.control(cp=.0001))
+par(xpd = NA) # otherwise on some devices the text is clipped
+prp(model.Pb, fallen.leaves=FALSE, tweak=1.1, varlen=35, faclen=0, extra=1, uniform=TRUE, yes.text="true", no.text="false")
+dev.off()
+
+png("CART_Pb_plot_pruned2.png", width=5000, height=2000, res=300)
+model.Pb.pruned <- prune(model.Pb, cp = 0.02)
+par(xpd = NA) # otherwise on some devices the text is clipped
+prp(model.Pb.pruned, fallen.leaves=FALSE, tweak=1.1, varlen=35, faclen=0, extra=1, uniform=TRUE, yes.text="true", no.text="false")
+dev.off()
+
+summary(model.Pb.pruned)
+
+#Testing how well tree predicts the test data
+pred.Pb_pruned <- predict(model.Pb.pruned, test.data, type="class")
+table(test.data["High Pb"])
+table(pred.Pb_pruned)
+sum(!is.na(pred.Pb_pruned))
+39/40 #Number correctly predicted = 97.5%
+```
+
+###Uranium
+```{r uranium}
+#Split the data into training and test set
+#Removing other metals from the Mn analysis.
+Metals_CART_U <- Metals_CART %>% 
+  dplyr::select(-`High Cu`, -`High Hg`, -`High Pb`, -`High Mn`)
+sample(1:100000000,1)
+set.seed(7185194) 
+training.samples <- createDataPartition(Metals_CART_U$`High U`, times = 1, p = 0.8, list = F)
+train.data  <- Metals_CART_U[training.samples, ]
+test.data <- Metals_CART_U[-training.samples, ]
+
+train.data <- as.data.frame(train.data)
+
+png("CART_U_plot2.png", width=2000, height=1100, res=300)
+model.U <- rpart(`High U` ~., data = train.data, control=rpart.control(cp=.0001))
+par(xpd = NA) # otherwise on some devices the text is clipped
+prp(model.U, fallen.leaves=FALSE, tweak=1.1, varlen=35, faclen=0, extra=1, uniform=TRUE, yes.text="true", no.text="false")
+dev.off()
+
+png("CART_U_plot_pruned2.png", width=5000, height=2000, res=300)
+model.U.pruned <- prune(model.U, cp = 0.02)
+par(xpd = NA) # otherwise on some devices the text is clipped
+prp(model.U.pruned, fallen.leaves=FALSE, tweak=1.1, varlen=40, faclen=0, extra=1, uniform=TRUE, yes.text="true", no.text="false")
+dev.off()
+
+summary(model.U.pruned)
+
+#Testing how well tree predicts the test data
+pred.U_pruned <- predict(model.U.pruned, test.data, type="class")
+table(test.data["High U"])
+table(pred.U_pruned)
+sum(!is.na(pred.U_pruned))
+37/40 #Number correctly predicted = 92.5%
+```
+
+###PC1 (Overall Metals Exposure)
+```{r PC1_CART}
+#Metals_CART2 <- select(Metals_CART, -c(`Log10 Cadmium`, 
+#                                       `Log10 Copper`, 
+#                                       `Log10 Manganese`,
+#                                       `Log10 Mercury`,
+#                                       `Log10 Lead`,
+#                                       `Log10 Uranium`))
+
+
+
+
+#Metals_CART_PC1 <- Metals_CART2 %>% 
+#  dplyr::select(-PC2)
+#sample(1:100000000,1)
+#set.seed(65306365)
+#training.samples <- createDataPartition(Metals_CART_PC1$PC1, times = 1, p = 0.8, list = F)
+#train.data  <- Metals_CART_PC1[training.samples, ]
+#test.data <- Metals_CART_PC1[-training.samples, ]
+
+#train.data <- as.data.frame(train.data)
+
+#png("CART_PC1_plot.png", width=1200, height=800, res=300)
+#model.PC1 <- rpart(PC1 ~., data = train.data)
+#par(xpd = NA) # otherwise on some devices the text is clipped
+#prp(model.PC1, fallen.leaves=FALSE, tweak=1.1, varlen=35, faclen=4, uniform=TRUE)
+#dev.off()
+
+#png("CART_PC1_plot_pruned.png", width=1200, height=800, res=300)
+#model.PC1.pruned <- prune(model.PC1, cp = 0.02)
+#par(xpd = NA) # otherwise on some devices the text is clipped
+#prp(model.PC1.pruned, fallen.leaves=FALSE, tweak=1.1, varlen=35, faclen=4, uniform=TRUE)
+#dev.off()
+
+#Testing how well tree predicts the test data
+#pred.PC1_pruned <- predict(model.PC1.pruned, test.data, type="vector")
+
+#Mean Absolute Error
+#mean(abs(pred.PC1_pruned - test.data$PC1))
+
+#Root Mean Squared Error
+#sqrt(mean((pred.PC1_pruned - test.data$PC1)^2))
+
+#R-squared 
+#cor(pred.PC1_pruned, test.data$PC1)^2 #13.6%
+
+#What about unpruned results?
+#Testing how well tree predicts the test data
+#pred.PC1_full <- predict(model.PC1, test.data, type="vector")
+
+#Mean Absolute Error
+#mean(abs(pred.PC1_full - test.data$PC1))
+
+#Root Mean Squared Error
+#sqrt(mean((pred.PC1_full - test.data$PC1)^2))
+
+#R-squared 
+#cor(pred.PC1_full, test.data$PC1)^2 #13.6%
+```

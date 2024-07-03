@@ -11,9 +11,14 @@ Note: Before running this code, Data_Clean.Rmd and Yuma_All_Data_Analysis.Rmb sh
 
 ## General Demographics Table - All_Data Analysis
 ```{r demographics_RecruitmentSite}
+## Required libraries
 library(dplyr)
 library(lubridate)
 library(EnvStats)
+library(ggsci)
+library(ggplot2)
+library(tidyr)
+
 #Date range of responses
 All_Data %>% 
   # transform to date format with lubridate
@@ -23,7 +28,7 @@ All_Data %>%
             max = max(Date, na.rm = T))
 
 all_demog <- t(All_Data %>%
-  filter(!is.na(DOB_year)) %>% 
+  filter(ID!="Y1008" & ID!="Y1015" & ID!="R1048" & ID!="R1083" & ID!="C1050" & ID!="C1059" & ID!="C1104") %>% 
   summarize("Site2"="All",
             "n"=length(Site),
             "Male"=sum(Gender==1, na.rm = T),
@@ -59,6 +64,7 @@ all_demog <- t(All_Data %>%
             "Other EDU"=sum(Education==7,  na.rm = T),
             "Farmers"=sum(Farmer==1, na.rm=T),
             "NonFarmer"=sum(Farmer==2, na.rm=T),
+            "Income At or Above Pob Level"=sum(Below_Pov==0, na.rm = T),
             "Income Below Pov Level"=sum(Below_Pov==1, na.rm = T),
             "WaterHomeTap"=sum(Water_home==1, na.rm=T),
             "WaterHomeWell"=sum(Water_home==2, na.rm=T),
@@ -68,19 +74,27 @@ all_demog <- t(All_Data %>%
             "PesticideExpNo"=sum(Pesticides==2, na.rm=T),
             "PesticideExpDK"=sum(Pesticides==3, na.rm=T),
             "PesticideExpRef"=sum(Pesticides==4, na.rm=T),
+            "Never Smoker"=sum(is.na(tobacco_history_fact)),
             "Heavy (Daily) Smoker"=sum(tobacco_history_fact==3, na.rm=T),
             "Light (Occasional) Smoker"=sum(tobacco_history_fact==2, na.rm=T),
             "Previous Smoker (Quit)"=sum(tobacco_history_fact==1, na.rm=T),
-            "GeoMean BMI"=round(geoMean(bmi, na.rm = T),1),
-            "GeoSD BMI"=round(geoSD(bmi, na.rm = T),1),
+            "Mean BMI"=round(mean(bmi, na.rm = T),1),
+            "SD BMI"=round(sd(bmi, na.rm = T),1),
             "BMI<=25"=sum(bmi<=25, na.rm=T),
             "25<BMI<=30"=sum(bmi>25&bmi<=30, na.rm=T),
             "BMI>30"=sum(bmi>30, na.rm=T),
             "Overweight"=sum(Overweight==1, na.rm = T),
-            "Obesity - EMR"=sum(emr_obesity==1, na.rm = T)))
+            "Obesity - EMR"=sum(emr_obesity==1, na.rm = T),
+            "Lived < 6 mo"=sum(Lived_in_Yuma==1, na.rm = T),
+            "Lived 6 mo - 1yr"=sum(Lived_in_Yuma==2, na.rm = T),
+            "Lived 1-3 yrs"=sum(Lived_in_Yuma==3, na.rm = T),
+            "Lived 3-5 yrs"=sum(Lived_in_Yuma==4, na.rm = T),
+            "Lived > 5 yrs"=sum(Lived_in_Yuma==5, na.rm = T),
+            "Thyroid Meds Yes"=sum(thyroid_med==1, na.rm = T),
+            "Thyroid Meds No"=sum(thyroid_med==0, na.rm = T)))
 
 grouped_demog <- t(All_Data %>%
-  filter(!is.na(DOB_year)) %>% 
+  filter(ID!="Y1008" & ID!="Y1015" & ID!="R1048" & ID!="R1083" & ID!="C1050" & ID!="C1059" & ID!="C1104") %>% 
   group_by(Site) %>%
   summarize("n"=length(Site),
             "Male"=sum(Gender==1, na.rm = T),
@@ -116,6 +130,7 @@ grouped_demog <- t(All_Data %>%
             "Other EDU"=sum(Education==7,  na.rm = T),
             "Farmers"=sum(Farmer==1, na.rm=T),
             "NonFarmer"=sum(Farmer==2, na.rm=T),
+            "Income At or Above Pob Level"=sum(Below_Pov==0, na.rm = T),
             "Income Below Pov Level"=sum(Below_Pov==1, na.rm = T),
             "WaterHomeTap"=sum(Water_home==1, na.rm=T),
             "WaterHomeWell"=sum(Water_home==2, na.rm=T),
@@ -125,16 +140,24 @@ grouped_demog <- t(All_Data %>%
             "PesticideExpNo"=sum(Pesticides==2, na.rm=T),
             "PesticideExpDK"=sum(Pesticides==3, na.rm=T),
             "PesticideExpRef"=sum(Pesticides==4, na.rm=T),
+            "Never Smoker"=sum(is.na(tobacco_history_fact)),
             "Heavy (Daily) Smoker"=sum(tobacco_history_fact==3, na.rm=T),
             "Light (Occasional) Smoker"=sum(tobacco_history_fact==2, na.rm=T),
             "Previous Smoker (Quit)"=sum(tobacco_history_fact==1, na.rm=T),
-            "GeoMean BMI"=round(geoMean(bmi, na.rm = T),1),
-            "GeoSD BMI"=round(geoSD(bmi, na.rm = T),1),
+            "Mean BMI"=round(mean(bmi, na.rm = T),1),
+            "SD BMI"=round(sd(bmi, na.rm = T),1),
             "BMI<=25"=sum(bmi<=25, na.rm=T),
             "25<BMI<=30"=sum(bmi>25&bmi<=30, na.rm=T),
             "BMI>30"=sum(bmi>30, na.rm=T),
             "Overweight"=sum(Overweight==1, na.rm = T),
-            "Obesity - EMR"=sum(emr_obesity==1, na.rm = T)))
+            "Obesity - EMR"=sum(emr_obesity==1, na.rm = T),
+            "Lived < 6 mo"=sum(Lived_in_Yuma==1, na.rm = T),
+            "Lived 6 mo - 1yr"=sum(Lived_in_Yuma==2, na.rm = T),
+            "Lived 1-3 yrs"=sum(Lived_in_Yuma==3, na.rm = T),
+            "Lived 3-5 yrs"=sum(Lived_in_Yuma==4, na.rm = T),
+            "Lived > 5 yrs"=sum(Lived_in_Yuma==5, na.rm = T),
+            "Thyroid Meds Yes"=sum(thyroid_med==1, na.rm = T),
+            "Thyroid Meds No"=sum(thyroid_med==0, na.rm = T)))
 
 demographics <- cbind(all_demog, grouped_demog)
 remove(all_demog)
@@ -142,10 +165,6 @@ remove(grouped_demog)
 ```
 
 ```{r demographics_CaseVControl}
-library(dplyr)
-library(lubridate)
-library(EnvStats)
-
 #Date range of responses
 All_Data %>% 
   # transform to date format with lubridate
@@ -155,7 +174,7 @@ All_Data %>%
             max = max(Date, na.rm = T))
 
 grouped_demog2 <- t(All_Data %>%
-  filter(!is.na(DOB_year)) %>% 
+  filter(ID!="Y1008" & ID!="Y1015" & ID!="R1048" & ID!="R1083" & ID!="C1050" & ID!="C1059" & ID!="C1104") %>% 
   group_by(any_thyroid_problem_dummy) %>%
   summarize("n"=length(Site),
             "Male"=sum(Gender==1, na.rm = T),
@@ -191,6 +210,7 @@ grouped_demog2 <- t(All_Data %>%
             "Other EDU"=sum(Education==7,  na.rm = T),
             "Farmers"=sum(Farmer==1, na.rm=T),
             "NonFarmer"=sum(Farmer==2, na.rm=T),
+            "Income At or Above Pob Level"=sum(Below_Pov==0, na.rm = T),
             "Income Below Pov Level"=sum(Below_Pov==1, na.rm = T),
             "WaterHomeTap"=sum(Water_home==1, na.rm=T),
             "WaterHomeWell"=sum(Water_home==2, na.rm=T),
@@ -200,37 +220,109 @@ grouped_demog2 <- t(All_Data %>%
             "PesticideExpNo"=sum(Pesticides==2, na.rm=T),
             "PesticideExpDK"=sum(Pesticides==3, na.rm=T),
             "PesticideExpRef"=sum(Pesticides==4, na.rm=T),
+            "Never Smoker"=sum(is.na(tobacco_history_fact)),
             "Heavy (Daily) Smoker"=sum(tobacco_history_fact==3, na.rm=T),
             "Light (Occasional) Smoker"=sum(tobacco_history_fact==2, na.rm=T),
             "Previous Smoker (Quit)"=sum(tobacco_history_fact==1, na.rm=T),
-            "GeoMean BMI"=round(geoMean(bmi, na.rm = T),1),
-            "GeoSD BMI"=round(geoSD(bmi, na.rm = T),1),
+            "Mean BMI"=round(mean(bmi, na.rm = T),1),
+            "SD BMI"=round(sd(bmi, na.rm = T),1),
             "BMI<=25"=sum(bmi<=25, na.rm=T),
             "25<BMI<=30"=sum(bmi>25&bmi<=30, na.rm=T),
             "BMI>30"=sum(bmi>30, na.rm=T),
             "Overweight"=sum(Overweight==1, na.rm = T),
-            "Obesity - EMR"=sum(emr_obesity==1, na.rm = T)))
+            "Obesity - EMR"=sum(emr_obesity==1, na.rm = T),
+            "Thyroid Meds Yes"=sum(thyroid_med==1, na.rm = T),
+            "Thyroid Meds No"=sum(thyroid_med==0, na.rm = T)))
 
 demographics2 <- grouped_demog2
 remove(grouped_demog2)
 
+grouped_demog3 <- t(All_Data %>%
+  filter(ID!="Y1008" & ID!="Y1015" & ID!="R1048" & ID!="R1083" & ID!="C1050" & ID!="C1059" & ID!="C1104") %>% 
+  group_by(EMR_any_thyroid_Dummy) %>%
+  summarize("n"=length(Site),
+            "Male"=sum(Gender==1, na.rm = T),
+            "Female"=sum(Gender==2, na.rm = T),
+            "Refused Gender"=sum(Gender==3, na.rm = T),
+            "18-39"=sum(age>=18 & age<40, na.rm = T),
+            "40-59"=sum(age>=40 & age<60, na.rm = T),
+            "60+"=sum(age>=60, na.rm = T),
+            "Average Age"=round(mean(age, na.rm = T), 1),
+            "SD Age"=round(sd(age, na.rm = T), 1),
+            "Hispanic"=sum(Ethnicity==1, na.rm = T),
+            "Not Hispanic"=sum(Ethnicity==2, na.rm = T),
+            "American Indian or Alaska Native"=sum(Race_ai_an==1, na.rm=T),
+            "Asian"=sum(Race_asian==1, na.rm=T),
+            "Black or African American"=sum(Race_black==1, na.rm=T),
+            "Native Hawaiian or Pacific Islander"=sum(Race_pac_isl==1, na.rm=T),
+            "White"=sum(Race_white==1, na.rm=T),
+            "Other"=sum(Race_other==1, na.rm=T),
+            "Don't know race"=sum(Race_dk==1, na.rm=T),
+            "Refused race"=sum(Race_refuse==1, na.rm=T),
+            "NA race"=sum(is.na(Race_ai_an)&is.na(Race_asian)&is.na(Race_black)&is.na(Race_pac_isl)&is.na(Race_white)&is.na(Race_other)&is.na(Race_dk)&is.na(Race_refuse)),
+            "Married"=sum(Marital_status==1, na.rm=T),
+            "Widowed"=sum(Marital_status==2, na.rm=T),
+            "Divorced"=sum(Marital_status==3, na.rm=T),
+            "Separated"=sum(Marital_status==4, na.rm=T),
+            "Never married"=sum(Marital_status==5, na.rm=T),
+            "No school"=sum(Education==1,  na.rm = T),
+            "Elementary school"=sum(Education==2,  na.rm = T),
+            "Middle school"=sum(Education==3,  na.rm = T),
+            "High school"=sum(Education==4,  na.rm = T),
+            "College"=sum(Education==5,  na.rm = T),
+            "Advanced degree"=sum(Education==6,  na.rm = T),
+            "Other EDU"=sum(Education==7,  na.rm = T),
+            "Farmers"=sum(Farmer==1, na.rm=T),
+            "NonFarmer"=sum(Farmer==2, na.rm=T),
+            "Income At or Above Pob Level"=sum(Below_Pov==0, na.rm = T),
+            "Income Below Pov Level"=sum(Below_Pov==1, na.rm = T),
+            "WaterHomeTap"=sum(Water_home==1, na.rm=T),
+            "WaterHomeWell"=sum(Water_home==2, na.rm=T),
+            "WaterHomeBottled"=sum(Water_home==3, na.rm=T),
+            "WaterHomeOther"=sum(Water_home==4, na.rm=T),
+            "PesticideExpYes"=sum(Pesticides==1, na.rm=T),
+            "PesticideExpNo"=sum(Pesticides==2, na.rm=T),
+            "PesticideExpDK"=sum(Pesticides==3, na.rm=T),
+            "PesticideExpRef"=sum(Pesticides==4, na.rm=T),
+            "Never Smoker"=sum(is.na(tobacco_history_fact)),
+            "Heavy (Daily) Smoker"=sum(tobacco_history_fact==3, na.rm=T),
+            "Light (Occasional) Smoker"=sum(tobacco_history_fact==2, na.rm=T),
+            "Previous Smoker (Quit)"=sum(tobacco_history_fact==1, na.rm=T),
+            "Mean BMI"=round(mean(bmi, na.rm = T),1),
+            "SD BMI"=round(sd(bmi, na.rm = T),1),
+            "BMI<=25"=sum(bmi<=25, na.rm=T),
+            "25<BMI<=30"=sum(bmi>25&bmi<=30, na.rm=T),
+            "BMI>30"=sum(bmi>30, na.rm=T),
+            "Overweight"=sum(Overweight==1, na.rm = T),
+            "Obesity - EMR"=sum(emr_obesity==1, na.rm = T),
+            "Thyroid Meds Yes"=sum(thyroid_med==1, na.rm = T),
+            "Thyroid Meds No"=sum(thyroid_med==0, na.rm = T)))
 ```
 
-```{r fixlater}
+```{r general_health}
 #Below will give a % of folks who rated their general health as fair (4) or poor (5)
-(All_Data %>% 
-  filter(General_health==4 | General_health==5) %>% 
-  summarise(Count = n()))/sum(!is.na(All_Data$General_health))
+All_Data %>% 
+  filter(!is.na(General_health)) %>% 
+  summarise(Total_Poor = sum(General_health==4 | General_health==5, na.rm = T),
+            Total_total = length(General_health),
+            Count = Total_Poor/Total_total)
+
+All_Data %>% 
+  summarise(Total_Poor = sum(General_health==4 | General_health==5, na.rm = T),
+            Total_total = length(General_health),
+            Count = Total_Poor/Total_total)
 
 #Below will give a % of folks who are listed as having a "thyroid problem"
 #This needs to be verified by Mark Remiker in terms of how this information was coded.
-(All_Data %>% 
-  filter(any_thyroid_problem_dummy==1) %>% 
-  summarise(Count = n()))/sum(!is.na(All_Data$thyroid_prob_D))
+#Via email from Mark: "We created a dummy variable for thyroid condition (hypo or hyper or cancer, etc.), just like you, but since we had EMR for data less than half of our sample (none of the folks recruited from CSF had any medical records available), we opted to use the self-reported conditions from the survey data."
 
-(All_Data %>% 
+All_Data %>% 
+  filter(any_thyroid_problem_dummy==1) %>% 
+  summarise((Count = n())/sum(!is.na(All_Data$thyroid_prob_D)))
+
+All_Data %>% 
   filter(emr_thyroid_problem_fromothercolumns==1) %>% 
-  summarise(Count = n()))/sum(!is.na(All_Data$emr_thyroid_problem))
+  summarise((Count = n())/sum(!is.na(All_Data$emr_thyroid_problem)))
 ```
 ## Total Outcome Counts
 ```{r case_counts}
@@ -263,6 +355,7 @@ Case_Count <- All_Data %>%
             "PCOS"=sum(pos_recode==1, na.rm = T),
             "PCOS - EMR"=sum(emr_pos==1, na.rm = T),
             "Undescended Testes"=sum(undescended==1, na.rm = T),
+            "Ambiguous"=sum(ambiguous==1, na.rm = T),
             "Emphysema"=sum(emphysema==1, na.rm = T),
             "Overweight"=sum(Overweight==1, na.rm = T),
             "BMI>25"=sum(bmi>25, na.rm=T),
@@ -303,6 +396,7 @@ Case_Count2 <- All_Data %>%
             "PCOS"=sum(pos_recode==1, na.rm = T),
             "PCOS - EMR"=sum(emr_pos==1, na.rm = T),
             "Undescended Testes"=sum(undescended==1, na.rm = T),
+            "Ambiguous"=sum(ambiguous==1, na.rm = T),
             "Emphysema"=sum(emphysema==1, na.rm = T),
             "Overweight"=sum(Overweight==1, na.rm = T),
             "BMI>25"=sum(bmi>25, na.rm=T),
@@ -323,23 +417,157 @@ knitr::kable(Total_Case_Count)
 remove(Case_Count)
 remove(Case_Count2)
 remove(Case_Count3)
+
+####################Again but only thyroid outcomes
+
+Case_Count <- All_Data %>% 
+  summarise("Self-Report Goiter"=sum(goiter==1, na.rm = T),
+            "EMR Goiter"=sum(emr_goiter==1, na.rm = T),
+            "Self-Report Thyroid Disease"=sum(any_thyroid_problem_dummy==1, na.rm = T),
+            "EMR Thyroid Disease"=sum(emr_thyroid_problem_fromothercolumns==1, na.rm = T),
+            "Self-Report Hypothyroidism"=sum(hypothyroid==1, na.rm = T),
+            "EMR Hypothyroidism"= sum(emr_hypothyroidism==1, na.rm = T),
+            "Self-Report Hyperthyroidism"=sum(hyperthyroid==1, na.rm = T),
+            "EMR Hyperthyroidism"= sum(emr_hyperthyroidism==1, na.rm = T),
+            "Self-Report Thyroid Cancer"=sum(thyroid_cancer==1, na.rm = T),
+            "EMR Thyroid Cancer"=sum(emr_thyroid_cancer==1, na.rm = T))
+
+Case_Count <- t(Case_Count)
+colnames(Case_Count) <- c("Overall")
+
+Case_Count2 <- All_Data %>% 
+  group_by(Site) %>% 
+  summarise("Self-Report Goiter"=sum(goiter==1, na.rm = T),
+            "EMR Goiter"=sum(emr_goiter==1, na.rm = T),
+            "Self-Report Thyroid Disease"=sum(any_thyroid_problem_dummy==1, na.rm = T),
+            "EMR Thyroid Disease"=sum(emr_thyroid_problem_fromothercolumns==1, na.rm = T),
+            "Self-Report Hypothyroidism"=sum(hypothyroid==1, na.rm = T),
+            "EMR Hypothyroidism"= sum(emr_hypothyroidism==1, na.rm = T),
+            "Self-Report Hyperthyroidism"=sum(hyperthyroid==1, na.rm = T),
+            "EMR Hyperthyroidism"= sum(emr_hyperthyroidism==1, na.rm = T),
+            "Self-Report Thyroid Cancer"=sum(thyroid_cancer==1, na.rm = T),
+            "EMR Thyroid Cancer"=sum(emr_thyroid_cancer==1, na.rm = T))
+
+#
+Case_Count3 <- t(Case_Count2[,-1])
+colnames(Case_Count3) <- Case_Count2$Site
+#1 = CSF, 2 = RCBH, 3 = YRMC
+colnames(Case_Count3) <- c("CSF", "RCBH", "YRMC")
+
+Total_Case_Count <- cbind(Case_Count, Case_Count3)
+
+knitr::kable(Total_Case_Count)
+
+remove(Case_Count)
+remove(Case_Count2)
+remove(Case_Count3)
+
+All_Data %>% 
+  filter(ID!="Y1008" & ID!="Y1015" & ID!="R1048" & ID!="R1083" & ID!="C1050" & ID!="C1059" & ID!="C1104") %>% 
+  group_by(Site) %>% 
+  summarise("Self-Report Case"=sum(any_thyroid_problem_dummy==1, na.rm = T),
+            "Self-Report Control"=sum(any_thyroid_problem_dummy==0, na.rm = T),
+            "EMR Case"=sum(EMR_any_thyroid_Dummy==1, na.rm = T),
+            "EMR Control"=sum(EMR_any_thyroid_Dummy==0, na.rm = T))
+
+chisq.test(as.factor(All_Data$any_thyroid_problem_dummy), as.factor(All_Data$Site), correct = F)
+
+chisq.test(as.factor(All_Data$EMR_any_thyroid_Dummy), as.factor(All_Data$Site), correct = F)
+
+#Self Report Cases: 
 ```
 
 ## Age
 ```{r age}
 All_Data$age <- as.numeric(All_Data$age)
-library(dplyr)
 knitr::kable(All_Data %>%
                summarise(mean=round(mean(age, na.rm=T), digits=1),
                          median=round(median(age, na.rm=T), digits=1),
                          min=round(min(age, na.rm=T), digits=1),
                          max=round(max(age, na.rm=T), digits=1),
                          NAs=sum(is.na(age))))
+
+range(All_Data$age, na.rm = T)
+
+All_Data %>% 
+  summarize(mean=round(mean(age, na.rm=T), digits=1),
+            sd=round(sd(age, na.rm=T), digits=1))
+
+All_Data %>% 
+  group_by(Site) %>% 
+  summarize(mean=round(mean(age, na.rm=T), digits=1),
+            sd=round(sd(age, na.rm=T), digits=1))
+
+ANOVA_age <- aov(age~Site, data=All_Data)
+summary(ANOVA_age)
+
+All_Data %>% 
+  group_by(any_thyroid_problem_dummy) %>% 
+  summarize(mean=round(mean(age, na.rm=T), digits=1),
+            sd=round(sd(age, na.rm=T), digits=1))
+
+t.test(age~any_thyroid_problem_dummy, data=All_Data)
+
+All_Data %>% 
+  group_by(EMR_any_thyroid_Dummy) %>% 
+  summarize(mean=round(mean(age, na.rm=T), digits=1),
+            sd=round(sd(age, na.rm=T), digits=1))
+
+t.test(age~EMR_any_thyroid_Dummy, data=All_Data)
+
+All_Data %>% 
+  group_by(any_thyroid_Dummy_EMR_or_SR) %>% 
+  summarize(mean=round(mean(age, na.rm=T), digits=1),
+            sd=round(sd(age, na.rm=T), digits=1))
+
+t.test(age~any_thyroid_Dummy_EMR_or_SR, data=All_Data)
 ```
 
 ## Height, Weight, and BMI
 ```{r bmi}
 knitr::kable(summary(round(All_Data[c("emr_height_inches", "emr_weight", "emr_bmi", "height_total", "Weight", "bmi")]), digits=1), col.names = c("EMR Height (inches)", "EMR Weight (lbs)", "EMR BMI", "Measured Height (inches)", "Measured Weight (lbs)", "Measured BMI"))
+
+All_Data %>% 
+  summarise("weight"=mean(Weight, na.rm = T),
+            "weight sd"=sd(Weight, na.rm = T),
+            "EMR Weight"=mean(emr_weight, na.rm = T),
+            "EMR Weight SD"=sd(emr_weight, na.rm = T),
+            "bmi"=mean(bmi, na.rm = T),
+            "bmi sd"=sd(bmi, na.rm = T),
+            "emr bmi"=mean(emr_bmi, na.rm = T),
+            "emr bmi sd"=sd(emr_bmi, na.rm = T))
+
+
+All_Data %>% 
+  group_by(Site) %>% 
+  summarise("weight"=mean(Weight, na.rm = T),
+            "weight sd"=sd(Weight, na.rm = T),
+            "EMR Weight"=mean(emr_weight, na.rm = T),
+            "EMR Weight SD"=sd(emr_weight, na.rm = T),
+            "bmi"=mean(bmi, na.rm = T),
+            "bmi sd"=sd(bmi, na.rm = T),
+            "emr bmi"=mean(emr_bmi, na.rm = T),
+            "emr bmi sd"=sd(emr_bmi, na.rm = T))
+
+#Calculating standard deviation for bmi manually since dplyr hates me for some reason
+sd(All_Data$bmi, na.rm = TRUE)
+sd(All_Data$bmi[All_Data$Site == "1"], na.rm = TRUE) #6.6
+sd(All_Data$bmi[All_Data$Site == "2"], na.rm = TRUE) #6.8
+sd(All_Data$bmi[All_Data$Site == "3"], na.rm = TRUE) #7.1
+
+
+All_Data %>% 
+  group_by(EMR_any_thyroid_Dummy) %>% 
+  summarise("weight"=mean(Weight, na.rm = T),
+            "weight sd"=sd(Weight, na.rm = T),
+            "bmi"=mean(bmi, na.rm = T),
+            "bmi sd"=sd(bmi, na.rm = T))
+
+
+
+All_Data %>% 
+  filter(Site==3) %>% 
+  summarise("bmi sd"=sd(bmi, na.rm = T))
 ```
 
 ### Determining if Differences Exist Among Demographic Groups
@@ -347,9 +575,9 @@ knitr::kable(summary(round(All_Data[c("emr_height_inches", "emr_weight", "emr_bm
 ##By Site
 chisq.test(as.factor(All_Data$Gender), as.factor(All_Data$Site), correct = F)
 
-All_Data$age_group2 <- ifelse(All_Data$age<40, 1, ifelse(All_Data$age>=40 & All_Data$age<60, 2, ifelse(All_Data$age>=60, 3, NA)))
+#All_Data$age_group2 <- ifelse(All_Data$age<40, 1, ifelse(All_Data$age>=40 & All_Data$age<60, 2, ifelse(All_Data$age>=60, 3, NA)))
 
-chisq.test(as.factor(All_Data$age_group2), as.factor(All_Data$Site), correct = F)
+#chisq.test(as.factor(All_Data$age_group2), as.factor(All_Data$Site), correct = F)
 
 chisq.test(as.factor(All_Data$Marital_status), as.factor(All_Data$Site), correct = F)
 
@@ -371,10 +599,13 @@ chisq.test(as.factor(All_Data$Income), as.factor(All_Data$Site), correct = F)
 
 chisq.test(as.factor(All_Data$bmi), as.factor(All_Data$Site), correct = F)
 
-##By Case/Control
+chisq.test(as.factor(All_Data$Lived_in_Yuma), as.factor(All_Data$Site), correct = F)
+
+
+##By SR Case/Control
 chisq.test(as.factor(All_Data$Gender), as.factor(All_Data$any_thyroid_problem_dummy), correct = F)
 
-chisq.test(as.factor(All_Data$age_group2), as.factor(All_Data$any_thyroid_problem_dummy), correct = F)
+#chisq.test(as.factor(All_Data$age_group2), as.factor(All_Data$any_thyroid_problem_dummy), correct = F)
 
 chisq.test(as.factor(All_Data$Marital_status), as.factor(All_Data$any_thyroid_problem_dummy), correct = F)
 
@@ -392,7 +623,633 @@ chisq.test(as.factor(All_Data$Race), as.factor(All_Data$any_thyroid_problem_dumm
 
 chisq.test(as.factor(All_Data$Smoking_Status), as.factor(All_Data$any_thyroid_problem_dummy), correct = F)
 
-chisq.test(as.factor(All_Data$Income), as.factor(All_Data$any_thyroid_problem_dummy), correct = F)
+chisq.test(as.factor(All_Data$Below_Pov), as.factor(All_Data$any_thyroid_problem_dummy), correct = F)
 
-chisq.test(as.factor(All_Data$bmi), as.factor(All_Data$any_thyroid_problem_dummy), correct = F)
+chisq.test(as.factor(All_Data$thyroid_med), as.factor(All_Data$any_thyroid_problem_dummy), correct = F)
+
+#t.test(log(All_Data$bmi[All_Data$any_thyroid_problem_dummy == 1]), log(All_Data$bmi[All_Data$any_thyroid_problem_dummy == 0]))
+
+t.test(All_Data$age[All_Data$any_thyroid_problem_dummy == 1], All_Data$age[All_Data$any_thyroid_problem_dummy == 0])
+
+t.test(All_Data$Weight[All_Data$any_thyroid_problem_dummy == 1], All_Data$Weight[All_Data$any_thyroid_problem_dummy == 0])
+
+t.test(All_Data$bmi[All_Data$any_thyroid_problem_dummy == 1], All_Data$bmi[All_Data$any_thyroid_problem_dummy == 0])
+
+##By EMR Case/Control
+chisq.test(as.factor(All_Data$Gender), as.factor(All_Data$EMR_any_thyroid_Dummy), correct = F)
+
+chisq.test(as.factor(All_Data$Marital_status), as.factor(All_Data$EMR_any_thyroid_Dummy), correct = F)
+
+chisq.test(as.factor(All_Data$Education), as.factor(All_Data$EMR_any_thyroid_Dummy), correct = F)
+
+chisq.test(as.factor(All_Data$Ethnicity), as.factor(All_Data$EMR_any_thyroid_Dummy), correct = F)
+
+chisq.test(as.factor(All_Data$Farmer), as.factor(All_Data$EMR_any_thyroid_Dummy), correct = F)
+
+chisq.test(as.factor(All_Data$Water_home), as.factor(All_Data$EMR_any_thyroid_Dummy), correct = F)
+
+chisq.test(as.factor(All_Data$Pesticides), as.factor(All_Data$EMR_any_thyroid_Dummy), correct = F)
+
+chisq.test(as.factor(All_Data$Race), as.factor(All_Data$EMR_any_thyroid_Dummy), correct = F)
+
+chisq.test(as.factor(All_Data$Smoking_Status), as.factor(All_Data$EMR_any_thyroid_Dummy), correct = F)
+
+chisq.test(as.factor(All_Data$Below_Pov), as.factor(All_Data$EMR_any_thyroid_Dummy), correct = F)
+
+chisq.test(as.factor(All_Data$thyroid_med), as.factor(All_Data$EMR_any_thyroid_Dummy), correct = F)
+
+#t.test(log(All_Data$bmi[All_Data$EMR_any_thyroid_Dummy == 1]), log(All_Data$bmi[All_Data$EMR_any_thyroid_Dummy == 0]))
+
+t.test(All_Data$age[All_Data$EMR_any_thyroid_Dummy == 1], All_Data$age[All_Data$EMR_any_thyroid_Dummy == 0])
+
+t.test(All_Data$Weight[All_Data$EMR_any_thyroid_Dummy == 1], All_Data$Weight[All_Data$EMR_any_thyroid_Dummy == 0])
+
+t.test(All_Data$bmi[All_Data$EMR_any_thyroid_Dummy == 1], All_Data$bmi[All_Data$EMR_any_thyroid_Dummy == 0])
+```
+
+
+``` {r updated_demo_numbers}
+#Just some quick little things that I forgot for the tables
+mean(All_Data$Weight, na.rm = T)
+sd(All_Data$Weight, na.rm = T)
+
+All_Data %>% 
+  group_by(Site) %>% 
+  summarise(mean=mean(Weight, na.rm = T),
+            sd=sd(Weight, na.rm = T))
+
+All_Data %>% 
+  group_by(any_thyroid_problem_dummy) %>% 
+  summarise(mean=mean(Weight, na.rm = T),
+            sd=sd(Weight, na.rm = T))
+
+#Log-transformed to fit normal assumption
+weight_ANOVA <- aov(log10(Weight) ~ Site, data = All_Data)
+summary(weight_ANOVA)
+
+t.test(log10(Weight) ~ as.factor(any_thyroid_problem_dummy), data = All_Data, conf.level = 0.95)
+t.test(log10(Weight) ~ as.factor(EMR_any_thyroid_Dummy), data = All_Data, conf.level = 0.95)
+
+hist(All_Data$Weight)
+
+#BMI
+mean(All_Data$bmi, na.rm = T)
+sd(All_Data$bmi, na.rm = T)
+
+All_Data %>% 
+  group_by(Site) %>% 
+  summarise(mean=mean(bmi, na.rm = T),
+            sd=sd(bmi, na.rm = T))
+
+All_Data %>% 
+  group_by(any_thyroid_problem_dummy) %>% 
+  summarise(mean=mean(bmi, na.rm = T),
+            sd=sd(bmi, na.rm = T))
+
+hist(All_Data$bmi) #lognormal
+hist(log10(All_Data$bmi)) #normal
+
+#Log-transformed to fit normal assumption
+bmi_ANOVA <- aov(log10(bmi) ~ Site, data = All_Data)
+summary(bmi_ANOVA)
+
+bmi_ANOVA2 <- aov(bmi ~ Site, data = All_Data)
+summary(bmi_ANOVA2)
+
+t.test(log10(bmi) ~ as.factor(any_thyroid_problem_dummy), data = All_Data, conf.level = 0.95)
+t.test(log10(bmi) ~ as.factor(EMR_any_thyroid_Dummy), data = All_Data, conf.level = 0.95)
+
+#Looking at BMI obesity counts
+All_Data %>% 
+  summarise(bmi_count=sum(bmi>=30, na.rm = T),
+            emi_bmi_count=sum(emr_bmi>=30, na.rm = T))
+
+All_Data %>% 
+  group_by(Site) %>% 
+  summarise(bmi_count=sum(bmi>=30, na.rm = T),
+            emi_bmi_count=sum(emr_bmi>=30, na.rm = T))
+```
+
+
+```{r demographics_graphics}
+counts_Ethnicity <- All_Data %>% 
+  filter(!is.na(Ethnicity)) %>% 
+  group_by(Ethnicity) %>% 
+  summarise(count = n(),
+            percent = (count/323)*100)
+
+ggplot(counts_Ethnicity, aes(x = "", y = percent, fill = factor(Ethnicity))) +
+  geom_col() +
+  geom_text(aes(label = round(percent, 1)),
+            color = "white",
+            size=6,
+            position = position_stack(vjust = 0.5)) +
+  coord_polar(theta = "y")+
+  scale_fill_manual(name = "Ethnicity (%)",
+                      values = c("#607D8B", "#00008B"),
+                      labels = c("Hispanic", "Non-Hispanic"))+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        panel.grid  = element_blank(),
+        text = element_text(size = 15))+
+  xlab("")+
+  ylab("")
+
+counts_Race <- All_Data %>% 
+  filter(!is.na(Race)) %>% 
+  group_by(Race) %>% 
+  summarise(count = n(),
+            percent = (count/323)*100)
+
+
+ggplot(counts_Race, aes(x = "", y = percent, fill = factor(Race))) +
+  geom_col() +
+  coord_polar(theta = "y")+
+  scale_fill_simpsons()+
+  scale_fill_discrete(name = "Race (%)",
+                      labels = c("American Indian or Alaska Native", 
+                                 "Asian",
+                                 "Black or African American",
+                                 "Native Hawaiian or Pacific Islander",
+                                 "White",
+                                 "Other",
+                                 "Don't know",
+                                 "Refused"))+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        panel.grid  = element_blank(),
+        text = element_text(size = 15))+
+  xlab("")+
+  ylab("")
+
+counts_Age_Gender <- All_Data %>% 
+  filter(!is.na(Gender)) %>% 
+  group_by(age_group, Gender) %>% 
+  summarise(count = n())
+
+All_Data %>% 
+  filter(!is.na(Gender)) %>% 
+  group_by(Gender) %>% 
+  summarise(count = n())
+
+counts_Age_Gender$percent_by_gender <- ifelse(counts_Age_Gender$Gender==2, (as.numeric(counts_Age_Gender$count)/255)*100, (as.numeric(counts_Age_Gender$count)/68)*100)
+
+counts_Age <- All_Data %>% 
+  filter(!is.na(Gender)) %>% 
+  group_by(age_group) %>% 
+  summarise(count = n())
+
+Switch_Age <- function(x){
+  switch (x,
+    "19" = "< 20",
+    "20" = "20s",
+    "30" = "30s",
+    "40" = "40s",
+    "50" = "50s",
+    "60" = "60s",
+    "70" = "70s",
+    "80" = "80+",
+    "NA" = NA
+  )
+}
+
+counts_Age_Gender$age_group2 <- ifelse(counts_Age_Gender$age_group=="19", "< 20s",
+                                       ifelse(counts_Age_Gender$age_group=="20", "20s",
+                                              ifelse(counts_Age_Gender$age_group=="30", "30s",
+                                                     ifelse(counts_Age_Gender$age_group=="40", "40s",
+                                                            ifelse(counts_Age_Gender$age_group=="50", "50s",
+                                                                   ifelse(counts_Age_Gender$age_group=="60", "60s",
+                                                                          ifelse(counts_Age_Gender$age_group=="70", "70s",
+                                                                                 ifelse(counts_Age_Gender$age_group=="80", "80s+", NA))))))))
+
+ggplot(subset(counts_Age_Gender, !is.na(counts_Age_Gender$age_group2)), aes(x=factor(age_group2), y=ifelse(Gender==1, -percent_by_gender, percent_by_gender), fill=factor(Gender)))+
+  geom_col() +
+  coord_flip()+
+  scale_fill_discrete(name="Gender",
+                      labels=c("Male", "Female"))+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        panel.grid  = element_blank(),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15))+
+  ylab("Percent")+
+  xlab("Age Group")
+```
+
+```{r demo_by_hair}
+#Checking to see how those who gave hair samples compare to those who don't in terms of demographics
+all_demog_hair <- t(All_Data %>%
+  filter(ID!="Y1008" & ID!="Y1015" & ID!="R1048" & ID!="R1083" & ID!="C1050" & ID!="C1059" & ID!="C1104" & (!is.na(As75) | !is.na(Cd111) | !is.na(Cu65) | !is.na(Fe57) | !is.na(Hg202) | !is.na(Mn55) | !is.na(Pb208) | !is.na(U238))) %>%
+  summarize("n"=length(Site),
+            "Male"=sum(Gender==1, na.rm = T),
+            "Female"=sum(Gender==2, na.rm = T),
+            "Refused Gender"=sum(Gender==3, na.rm = T),
+            "CSF"=sum(Site==1, na.rm = T),
+            "RCBH"=sum(Site==2, na.rm = T),
+            "YRMC"=sum(Site==3, na.rm = T),
+            "18-39"=sum(age>=18 & age<40, na.rm = T),
+            "40-59"=sum(age>=40 & age<60, na.rm = T),
+            "60+"=sum(age>=60, na.rm = T),
+            "Average Age"=round(mean(age, na.rm = T), 1),
+            "SD Age"=round(sd(age, na.rm = T), 1),
+            "Hispanic"=sum(Ethnicity==1, na.rm = T),
+            "Not Hispanic"=sum(Ethnicity==2, na.rm = T),
+            "American Indian or Alaska Native"=sum(Race_ai_an==1, na.rm=T),
+            "Asian"=sum(Race_asian==1, na.rm=T),
+            "Black or African American"=sum(Race_black==1, na.rm=T),
+            "Native Hawaiian or Pacific Islander"=sum(Race_pac_isl==1, na.rm=T),
+            "White"=sum(Race_white==1, na.rm=T),
+            "Other"=sum(Race_other==1, na.rm=T),
+            "Don't know race"=sum(Race_dk==1, na.rm=T),
+            "Refused race"=sum(Race_refuse==1, na.rm=T),
+            "NA race"=sum(is.na(Race_ai_an)&is.na(Race_asian)&is.na(Race_black)&is.na(Race_pac_isl)&is.na(Race_white)&is.na(Race_other)&is.na(Race_dk)&is.na(Race_refuse)),
+            "Married"=sum(Marital_status==1, na.rm=T),
+            "Widowed"=sum(Marital_status==2, na.rm=T),
+            "Divorced"=sum(Marital_status==3, na.rm=T),
+            "Separated"=sum(Marital_status==4, na.rm=T),
+            "Never married"=sum(Marital_status==5, na.rm=T),
+            "No school"=sum(Education==1,  na.rm = T),
+            "Elementary school"=sum(Education==2,  na.rm = T),
+            "Middle school"=sum(Education==3,  na.rm = T),
+            "High school"=sum(Education==4,  na.rm = T),
+            "College"=sum(Education==5,  na.rm = T),
+            "Advanced degree"=sum(Education==6,  na.rm = T),
+            "Other EDU"=sum(Education==7,  na.rm = T),
+            "Farmers"=sum(Farmer==1, na.rm=T),
+            "NonFarmer"=sum(Farmer==2, na.rm=T),
+            "Income At or Above Pob Level"=sum(Below_Pov==0, na.rm = T),
+            "Income Below Pov Level"=sum(Below_Pov==1, na.rm = T),
+            "WaterHomeTap"=sum(Water_home==1, na.rm=T),
+            "WaterHomeWell"=sum(Water_home==2, na.rm=T),
+            "WaterHomeBottled"=sum(Water_home==3, na.rm=T),
+            "WaterHomeOther"=sum(Water_home==4, na.rm=T),
+            "PesticideExpYes"=sum(Pesticides==1, na.rm=T),
+            "PesticideExpNo"=sum(Pesticides==2, na.rm=T),
+            "PesticideExpDK"=sum(Pesticides==3, na.rm=T),
+            "PesticideExpRef"=sum(Pesticides==4, na.rm=T),
+            "Never Smoker"=sum(is.na(tobacco_history_fact)),
+            "Heavy (Daily) Smoker"=sum(tobacco_history_fact==3, na.rm=T),
+            "Light (Occasional) Smoker"=sum(tobacco_history_fact==2, na.rm=T),
+            "Previous Smoker (Quit)"=sum(tobacco_history_fact==1, na.rm=T),
+            "Mean BMI"=round(mean(bmi, na.rm = T),1),
+            "SD BMI"=round(sd(bmi, na.rm = T),1),
+            "BMI<=25"=sum(bmi<=25, na.rm=T),
+            "25<BMI<=30"=sum(bmi>25&bmi<=30, na.rm=T),
+            "BMI>30"=sum(bmi>30, na.rm=T),
+            "Overweight"=sum(Overweight==1, na.rm = T),
+            "Obesity - EMR"=sum(emr_obesity==1, na.rm = T),
+            "Lived < 6 mo"=sum(Lived_in_Yuma==1, na.rm = T),
+            "Lived 6 mo - 1yr"=sum(Lived_in_Yuma==2, na.rm = T),
+            "Lived 1-3 yrs"=sum(Lived_in_Yuma==3, na.rm = T),
+            "Lived 3-5 yrs"=sum(Lived_in_Yuma==4, na.rm = T),
+            "Lived > 5 yrs"=sum(Lived_in_Yuma==5, na.rm = T),
+            "Thyroid Meds Yes"=sum(thyroid_med==1, na.rm = T),
+            "Thyroid Meds No"=sum(thyroid_med==0, na.rm = T)))
+
+all_demog_nohair <- t(All_Data %>%
+  filter(ID!="Y1008" & ID!="Y1015" & ID!="R1048" & ID!="R1083" & ID!="C1050" & ID!="C1059" & ID!="C1104" & (is.na(As75) & is.na(Cd111) & is.na(Cu65) & is.na(Fe57) & is.na(Hg202) & is.na(Mn55) & is.na(Pb208) & is.na(U238))) %>%
+  summarize("n"=length(Site),
+            "Male"=sum(Gender==1, na.rm = T),
+            "Female"=sum(Gender==2, na.rm = T),
+            "Refused Gender"=sum(Gender==3, na.rm = T),
+            "CSF"=sum(Site==1, na.rm = T),
+            "RCBH"=sum(Site==2, na.rm = T),
+            "YRMC"=sum(Site==3, na.rm = T),
+            "18-39"=sum(age>=18 & age<40, na.rm = T),
+            "40-59"=sum(age>=40 & age<60, na.rm = T),
+            "60+"=sum(age>=60, na.rm = T),
+            "Average Age"=round(mean(age, na.rm = T), 1),
+            "SD Age"=round(sd(age, na.rm = T), 1),
+            "Hispanic"=sum(Ethnicity==1, na.rm = T),
+            "Not Hispanic"=sum(Ethnicity==2, na.rm = T),
+            "American Indian or Alaska Native"=sum(Race_ai_an==1, na.rm=T),
+            "Asian"=sum(Race_asian==1, na.rm=T),
+            "Black or African American"=sum(Race_black==1, na.rm=T),
+            "Native Hawaiian or Pacific Islander"=sum(Race_pac_isl==1, na.rm=T),
+            "White"=sum(Race_white==1, na.rm=T),
+            "Other"=sum(Race_other==1, na.rm=T),
+            "Don't know race"=sum(Race_dk==1, na.rm=T),
+            "Refused race"=sum(Race_refuse==1, na.rm=T),
+            "NA race"=sum(is.na(Race_ai_an)&is.na(Race_asian)&is.na(Race_black)&is.na(Race_pac_isl)&is.na(Race_white)&is.na(Race_other)&is.na(Race_dk)&is.na(Race_refuse)),
+            "Married"=sum(Marital_status==1, na.rm=T),
+            "Widowed"=sum(Marital_status==2, na.rm=T),
+            "Divorced"=sum(Marital_status==3, na.rm=T),
+            "Separated"=sum(Marital_status==4, na.rm=T),
+            "Never married"=sum(Marital_status==5, na.rm=T),
+            "No school"=sum(Education==1,  na.rm = T),
+            "Elementary school"=sum(Education==2,  na.rm = T),
+            "Middle school"=sum(Education==3,  na.rm = T),
+            "High school"=sum(Education==4,  na.rm = T),
+            "College"=sum(Education==5,  na.rm = T),
+            "Advanced degree"=sum(Education==6,  na.rm = T),
+            "Other EDU"=sum(Education==7,  na.rm = T),
+            "Farmers"=sum(Farmer==1, na.rm=T),
+            "NonFarmer"=sum(Farmer==2, na.rm=T),
+            "Income At or Above Pob Level"=sum(Below_Pov==0, na.rm = T),
+            "Income Below Pov Level"=sum(Below_Pov==1, na.rm = T),
+            "WaterHomeTap"=sum(Water_home==1, na.rm=T),
+            "WaterHomeWell"=sum(Water_home==2, na.rm=T),
+            "WaterHomeBottled"=sum(Water_home==3, na.rm=T),
+            "WaterHomeOther"=sum(Water_home==4, na.rm=T),
+            "PesticideExpYes"=sum(Pesticides==1, na.rm=T),
+            "PesticideExpNo"=sum(Pesticides==2, na.rm=T),
+            "PesticideExpDK"=sum(Pesticides==3, na.rm=T),
+            "PesticideExpRef"=sum(Pesticides==4, na.rm=T),
+            "Never Smoker"=sum(is.na(tobacco_history_fact)),
+            "Heavy (Daily) Smoker"=sum(tobacco_history_fact==3, na.rm=T),
+            "Light (Occasional) Smoker"=sum(tobacco_history_fact==2, na.rm=T),
+            "Previous Smoker (Quit)"=sum(tobacco_history_fact==1, na.rm=T),
+            "Mean BMI"=round(mean(bmi, na.rm = T),1),
+            "SD BMI"=round(sd(bmi, na.rm = T),1),
+            "BMI<=25"=sum(bmi<=25, na.rm=T),
+            "25<BMI<=30"=sum(bmi>25&bmi<=30, na.rm=T),
+            "BMI>30"=sum(bmi>30, na.rm=T),
+            "Overweight"=sum(Overweight==1, na.rm = T),
+            "Obesity - EMR"=sum(emr_obesity==1, na.rm = T),
+            "Lived < 6 mo"=sum(Lived_in_Yuma==1, na.rm = T),
+            "Lived 6 mo - 1yr"=sum(Lived_in_Yuma==2, na.rm = T),
+            "Lived 1-3 yrs"=sum(Lived_in_Yuma==3, na.rm = T),
+            "Lived 3-5 yrs"=sum(Lived_in_Yuma==4, na.rm = T),
+            "Lived > 5 yrs"=sum(Lived_in_Yuma==5, na.rm = T),
+            "Thyroid Meds Yes"=sum(thyroid_med==1, na.rm = T),
+            "Thyroid Meds No"=sum(thyroid_med==0, na.rm = T)))
+
+demographics_hair <- cbind(all_demog_hair, all_demog_nohair)
+demographics_hair <- data.frame(demographics_hair)
+
+demographics_hair$V1Perc <- round((demographics_hair$X1/211)*100,1)
+demographics_hair$V2Perc <- round((demographics_hair$X2/112)*100,1)
+
+All_Data$provided_hair <- ifelse(All_Data$ID=="Y1008" | All_Data$ID=="Y1015" | All_Data$ID=="R1048" | All_Data$ID=="R1083" | All_Data$ID=="C1050" | All_Data$ID=="C1059" | All_Data$ID=="C1104", NA,
+                                 ifelse(is.na(All_Data$As75) & is.na(All_Data$Cd111) & is.na(All_Data$Cu65) & is.na(All_Data$Fe57) & is.na(All_Data$Hg202) & is.na(All_Data$Mn55) & is.na(All_Data$Pb208) & is.na(All_Data$U238), 0, 1))
+
+##By EMR Case/Control
+chisq.test(as.factor(All_Data$Gender), as.factor(All_Data$provided_hair), correct = F)
+
+chisq.test(as.factor(All_Data$Education), as.factor(All_Data$provided_hair), correct = F)
+
+chisq.test(as.factor(All_Data$Ethnicity), as.factor(All_Data$provided_hair), correct = F)
+
+chisq.test(as.factor(All_Data$Farmer), as.factor(All_Data$provided_hair), correct = F)
+
+chisq.test(as.factor(All_Data$Water_all), as.factor(All_Data$provided_hair), correct = F)
+
+chisq.test(as.factor(All_Data$Pesticides), as.factor(All_Data$provided_hair), correct = F)
+
+chisq.test(as.factor(All_Data$Race), as.factor(All_Data$provided_hair), correct = F)
+
+chisq.test(as.factor(All_Data$Smoking_Status), as.factor(All_Data$provided_hair), correct = F)
+
+chisq.test(as.factor(All_Data$Below_Pov), as.factor(All_Data$provided_hair), correct = F)
+
+chisq.test(as.factor(All_Data$Lived_in_Yuma), as.factor(All_Data$provided_hair), correct = F)
+
+chisq.test(as.factor(All_Data$thyroid_med), as.factor(All_Data$provided_hair), correct = F)
+
+chisq.test(as.factor(All_Data$Site), as.factor(All_Data$provided_hair), correct = F)
+
+t.test(All_Data$age[All_Data$provided_hair == 1], All_Data$age[All_Data$provided_hair == 0])
+
+t.test(All_Data$Weight[All_Data$provided_hair == 1], All_Data$Weight[All_Data$provided_hair == 0])
+
+t.test(All_Data$bmi[All_Data$provided_hair == 1], All_Data$bmi[All_Data$provided_hair == 0])
+```
+
+```{r more_questions}
+All_Data %>%
+  filter(ID!="Y1008" & ID!="Y1015" & ID!="R1048" & ID!="R1083" & ID!="C1050" & ID!="C1059" & ID!="C1104") %>% 
+  group_by(Water_all) %>%
+  summarise(count = n(),.groups = "drop")
+
+All_Data_Pesticides <- subset(All_Data, All_Data$Pesticides==1)
+unique(All_Data_Pesticides$Occupation)
+
+
+metal_abbreviations <- as_labeller(c("Mn55" = "Mn", "Cu65" = "Cu", "Cd111" = "Cd", "Hg202" = "Hg", "Pb208" = "Pb", "U238" = "U"))
+
+give.n <- function(x){
+  return(c(y = median(x)*1.05, label = length(x))) 
+  # experiment with the multiplier to find the perfect position
+}
+
+Metals %>% 
+  dplyr::select(Mn55, Cu65, Cd111, Hg202, Pb208, U238, Site, ID, General_health) %>%
+  dplyr::filter(General_health<6 & !is.na(General_health)) %>% 
+  pivot_longer(-c(ID, Site, General_health), names_to="Metal", values_to="Concentration") %>%
+  ggplot(aes(y=log10(Concentration), fill=factor(General_health))) + 
+  geom_boxplot(aes(x = General_health)) +
+  #geom_point(aes(x = General_health, colour = factor(General_health)), position = "jitter", alpha=0.2) +
+  stat_summary(aes(x = General_health, y=-1.7), fun.data = give.n, geom = "text", fun.y = median,
+                  position = position_dodge(width = 0.75))+
+  facet_wrap(~ Metal, labeller = labeller(Metal = metal_abbreviations)) +
+  #ggtitle("Metals Concentrations by Health Status")+
+  ylab("Log Concentrations")+
+  xlab("")+
+  scale_fill_discrete(name = "General Health Status",
+                      labels = c("1" = "Excellent", "2" = "Very Good", "3" = "Good", "4" = "Fair", "5" = "Poor"))+
+  scale_x_discrete(labels = c("Mn55" = "Mn", "Cu65" = "Cu", "Cd111" = "Cd", "Hg202" = "Hg", "Pb208" = "Pb", "U238" = "U")) +
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.line = element_line(color="#000000"),
+        text = element_text(size = 15),
+        panel.spacing = unit(0.75, "cm"))
+
+summary(aov(log10(Mn55)~factor(General_health), All_Data))
+summary(aov(log10(Cu65)~factor(General_health), All_Data))
+summary(aov(log10(Cd111)~factor(General_health), All_Data))
+summary(aov(log10(Hg202)~factor(General_health), All_Data))
+summary(aov(log10(Pb208)~factor(General_health), All_Data))
+
+All_Data %>% 
+  group_by(General_health) %>% 
+  summarise(median_Hg=median(Hg202, na.rm=T))
+```
+
+```{r demo_by_casecontrol_fulldataset}
+#Checking to see how self-report cases and controls compare for those who gave all samples (excludes EMR)
+all_demog_complete <- t(All_Data %>%
+  filter(ID!="Y1008" & ID!="Y1015" & ID!="R1048" & ID!="R1083" & ID!="C1050" & ID!="C1059" & ID!="C1104" & (!is.na(Cd111) | !is.na(Cu65) | !is.na(Hg202) | !is.na(Mn55) | !is.na(Pb208) | !is.na(U238)) & (!is.na(Cortisol) | !is.na(TSH) | !is.na(fT3) | !is.na(fT4) | !is.na(TotalT4) | !is.na(TotalT3)) & (!is.na(Result_C_mg_dL) | !is.na(Result_P_ng_mL))) %>%
+  summarize("n"=length(Site),
+            "Male"=sum(Gender==1, na.rm = T),
+            "Female"=sum(Gender==2, na.rm = T),
+            "Refused Gender"=sum(Gender==3, na.rm = T),
+            "CSF"=sum(Site==1, na.rm = T),
+            "RCBH"=sum(Site==2, na.rm = T),
+            "YRMC"=sum(Site==3, na.rm = T),
+            "18-39"=sum(age>=18 & age<40, na.rm = T),
+            "40-59"=sum(age>=40 & age<60, na.rm = T),
+            "60+"=sum(age>=60, na.rm = T),
+            "Average Age"=round(mean(age, na.rm = T), 1),
+            "SD Age"=round(sd(age, na.rm = T), 1),
+            "Hispanic"=sum(Ethnicity==1, na.rm = T),
+            "Not Hispanic"=sum(Ethnicity==2, na.rm = T),
+            "American Indian or Alaska Native"=sum(Race_ai_an==1, na.rm=T),
+            "Asian"=sum(Race_asian==1, na.rm=T),
+            "Black or African American"=sum(Race_black==1, na.rm=T),
+            "Native Hawaiian or Pacific Islander"=sum(Race_pac_isl==1, na.rm=T),
+            "White"=sum(Race_white==1, na.rm=T),
+            "Other"=sum(Race_other==1, na.rm=T),
+            "Don't know race"=sum(Race_dk==1, na.rm=T),
+            "Refused race"=sum(Race_refuse==1, na.rm=T),
+            "NA race"=sum(is.na(Race_ai_an)&is.na(Race_asian)&is.na(Race_black)&is.na(Race_pac_isl)&is.na(Race_white)&is.na(Race_other)&is.na(Race_dk)&is.na(Race_refuse)),
+            "Married"=sum(Marital_status==1, na.rm=T),
+            "Widowed"=sum(Marital_status==2, na.rm=T),
+            "Divorced"=sum(Marital_status==3, na.rm=T),
+            "Separated"=sum(Marital_status==4, na.rm=T),
+            "Never married"=sum(Marital_status==5, na.rm=T),
+            "No school"=sum(Education==1,  na.rm = T),
+            "Elementary school"=sum(Education==2,  na.rm = T),
+            "Middle school"=sum(Education==3,  na.rm = T),
+            "High school"=sum(Education==4,  na.rm = T),
+            "College"=sum(Education==5,  na.rm = T),
+            "Advanced degree"=sum(Education==6,  na.rm = T),
+            "Other EDU"=sum(Education==7,  na.rm = T),
+            "Farmers"=sum(Farmer==1, na.rm=T),
+            "NonFarmer"=sum(Farmer==2, na.rm=T),
+            "Income At or Above Pob Level"=sum(Below_Pov==0, na.rm = T),
+            "Income Below Pov Level"=sum(Below_Pov==1, na.rm = T),
+            "WaterHomeTap"=sum(Water_home==1, na.rm=T),
+            "WaterHomeWell"=sum(Water_home==2, na.rm=T),
+            "WaterHomeBottled"=sum(Water_home==3, na.rm=T),
+            "WaterHomeOther"=sum(Water_home==4, na.rm=T),
+            "PesticideExpYes"=sum(Pesticides==1, na.rm=T),
+            "PesticideExpNo"=sum(Pesticides==2, na.rm=T),
+            "PesticideExpDK"=sum(Pesticides==3, na.rm=T),
+            "PesticideExpRef"=sum(Pesticides==4, na.rm=T),
+            "Never Smoker"=sum(is.na(tobacco_history_fact)),
+            "Heavy (Daily) Smoker"=sum(tobacco_history_fact==3, na.rm=T),
+            "Light (Occasional) Smoker"=sum(tobacco_history_fact==2, na.rm=T),
+            "Previous Smoker (Quit)"=sum(tobacco_history_fact==1, na.rm=T),
+            "Mean BMI"=round(mean(bmi, na.rm = T),1),
+            "SD BMI"=round(sd(bmi, na.rm = T),1),
+            "BMI<=25"=sum(bmi<=25, na.rm=T),
+            "25<BMI<=30"=sum(bmi>25&bmi<=30, na.rm=T),
+            "BMI>30"=sum(bmi>30, na.rm=T),
+            "Overweight"=sum(Overweight==1, na.rm = T),
+            "Obesity - EMR"=sum(emr_obesity==1, na.rm = T),
+            "Lived < 6 mo"=sum(Lived_in_Yuma==1, na.rm = T),
+            "Lived 6 mo - 1yr"=sum(Lived_in_Yuma==2, na.rm = T),
+            "Lived 1-3 yrs"=sum(Lived_in_Yuma==3, na.rm = T),
+            "Lived 3-5 yrs"=sum(Lived_in_Yuma==4, na.rm = T),
+            "Lived > 5 yrs"=sum(Lived_in_Yuma==5, na.rm = T),
+            "Thyroid Meds Yes"=sum(thyroid_med==1, na.rm = T),
+            "Thyroid Meds No"=sum(thyroid_med==0, na.rm = T),
+            "EMR Count"=sum(!is.na(emr_thyroid_problem))))
+
+all_demog_complete_casecontrol <- t(All_Data %>%
+  filter(ID!="Y1008" & ID!="Y1015" & ID!="R1048" & ID!="R1083" & ID!="C1050" & ID!="C1059" & ID!="C1104" & (!is.na(Cd111) | !is.na(Cu65) | !is.na(Hg202) | !is.na(Mn55) | !is.na(Pb208) | !is.na(U238)) & (!is.na(Cortisol) | !is.na(TSH) | !is.na(fT3) | !is.na(fT4) | !is.na(TotalT4) | !is.na(TotalT3)) & (!is.na(Result_C_mg_dL) | !is.na(Result_P_ng_mL))) %>%
+    group_by(any_thyroid_problem_dummy) %>% 
+  summarize("n"=length(Site),
+            "Male"=sum(Gender==1, na.rm = T),
+            "Female"=sum(Gender==2, na.rm = T),
+            "Refused Gender"=sum(Gender==3, na.rm = T),
+            "CSF"=sum(Site==1, na.rm = T),
+            "RCBH"=sum(Site==2, na.rm = T),
+            "YRMC"=sum(Site==3, na.rm = T),
+            "18-39"=sum(age>=18 & age<40, na.rm = T),
+            "40-59"=sum(age>=40 & age<60, na.rm = T),
+            "60+"=sum(age>=60, na.rm = T),
+            "Average Age"=round(mean(age, na.rm = T), 1),
+            "SD Age"=round(sd(age, na.rm = T), 1),
+            "Hispanic"=sum(Ethnicity==1, na.rm = T),
+            "Not Hispanic"=sum(Ethnicity==2, na.rm = T),
+            "American Indian or Alaska Native"=sum(Race_ai_an==1, na.rm=T),
+            "Asian"=sum(Race_asian==1, na.rm=T),
+            "Black or African American"=sum(Race_black==1, na.rm=T),
+            "Native Hawaiian or Pacific Islander"=sum(Race_pac_isl==1, na.rm=T),
+            "White"=sum(Race_white==1, na.rm=T),
+            "Other"=sum(Race_other==1, na.rm=T),
+            "Don't know race"=sum(Race_dk==1, na.rm=T),
+            "Refused race"=sum(Race_refuse==1, na.rm=T),
+            "NA race"=sum(is.na(Race_ai_an)&is.na(Race_asian)&is.na(Race_black)&is.na(Race_pac_isl)&is.na(Race_white)&is.na(Race_other)&is.na(Race_dk)&is.na(Race_refuse)),
+            "Married"=sum(Marital_status==1, na.rm=T),
+            "Widowed"=sum(Marital_status==2, na.rm=T),
+            "Divorced"=sum(Marital_status==3, na.rm=T),
+            "Separated"=sum(Marital_status==4, na.rm=T),
+            "Never married"=sum(Marital_status==5, na.rm=T),
+            "No school"=sum(Education==1,  na.rm = T),
+            "Elementary school"=sum(Education==2,  na.rm = T),
+            "Middle school"=sum(Education==3,  na.rm = T),
+            "High school"=sum(Education==4,  na.rm = T),
+            "College"=sum(Education==5,  na.rm = T),
+            "Advanced degree"=sum(Education==6,  na.rm = T),
+            "Other EDU"=sum(Education==7,  na.rm = T),
+            "Farmers"=sum(Farmer==1, na.rm=T),
+            "NonFarmer"=sum(Farmer==2, na.rm=T),
+            "Income At or Above Pob Level"=sum(Below_Pov==0, na.rm = T),
+            "Income Below Pov Level"=sum(Below_Pov==1, na.rm = T),
+            "WaterHomeTap"=sum(Water_home==1, na.rm=T),
+            "WaterHomeWell"=sum(Water_home==2, na.rm=T),
+            "WaterHomeBottled"=sum(Water_home==3, na.rm=T),
+            "WaterHomeOther"=sum(Water_home==4, na.rm=T),
+            "PesticideExpYes"=sum(Pesticides==1, na.rm=T),
+            "PesticideExpNo"=sum(Pesticides==2, na.rm=T),
+            "PesticideExpDK"=sum(Pesticides==3, na.rm=T),
+            "PesticideExpRef"=sum(Pesticides==4, na.rm=T),
+            "Never Smoker"=sum(is.na(tobacco_history_fact)),
+            "Heavy (Daily) Smoker"=sum(tobacco_history_fact==3, na.rm=T),
+            "Light (Occasional) Smoker"=sum(tobacco_history_fact==2, na.rm=T),
+            "Previous Smoker (Quit)"=sum(tobacco_history_fact==1, na.rm=T),
+            "Mean BMI"=round(mean(bmi, na.rm = T),1),
+            "SD BMI"=round(sd(bmi, na.rm = T),1),
+            "BMI<=25"=sum(bmi<=25, na.rm=T),
+            "25<BMI<=30"=sum(bmi>25&bmi<=30, na.rm=T),
+            "BMI>30"=sum(bmi>30, na.rm=T),
+            "Overweight"=sum(Overweight==1, na.rm = T),
+            "Obesity - EMR"=sum(emr_obesity==1, na.rm = T),
+            "Lived < 6 mo"=sum(Lived_in_Yuma==1, na.rm = T),
+            "Lived 6 mo - 1yr"=sum(Lived_in_Yuma==2, na.rm = T),
+            "Lived 1-3 yrs"=sum(Lived_in_Yuma==3, na.rm = T),
+            "Lived 3-5 yrs"=sum(Lived_in_Yuma==4, na.rm = T),
+            "Lived > 5 yrs"=sum(Lived_in_Yuma==5, na.rm = T),
+            "Thyroid Meds Yes"=sum(thyroid_med==1, na.rm = T),
+            "Thyroid Meds No"=sum(thyroid_med==0, na.rm = T),
+            "EMR Count"=sum(!is.na(emr_thyroid_problem))))
+
+#demographics_hair <- cbind(all_demog_hair, all_demog_nohair)
+#demographics_hair <- data.frame(demographics_hair)
+
+#demographics_hair$V1Perc <- round((demographics_hair$X1/211)*100,1)
+#demographics_hair$V2Perc <- round((demographics_hair$X2/112)*100,1)
+
+#All_Data$provided_hair <- ifelse(All_Data$ID=="Y1008" | All_Data$ID=="Y1015" | All_Data$ID=="R1048" | All_Data$ID=="R1083" | All_Data$ID=="C1050" | All_Data$ID=="C1059" | All_Data$ID=="C1104", NA,
+#                                 ifelse(is.na(All_Data$As75) & is.na(All_Data$Cd111) & is.na(All_Data$Cu65) & is.na(All_Data$Fe57) & is.na(All_Data$Hg202) & is.na(All_Data$Mn55) & is.na(All_Data$Pb208) & is.na(All_Data$U238), 0, 1))
+
+##By Case/Control
+
+Complete_Dataset_Samples <- All_Data %>%
+  filter(ID!="Y1008" & ID!="Y1015" & ID!="R1048" & ID!="R1083" & ID!="C1050" & ID!="C1059" & ID!="C1104" & (!is.na(Cd111) | !is.na(Cu65) | !is.na(Hg202) | !is.na(Mn55) | !is.na(Pb208) | !is.na(U238)) & (!is.na(Cortisol) | !is.na(TSH) | !is.na(fT3) | !is.na(fT4) | !is.na(TotalT4) | !is.na(TotalT3)) & (!is.na(Result_C_mg_dL) | !is.na(Result_P_ng_mL)))
+
+chisq.test(as.factor(Complete_Dataset_Samples$Gender), as.factor(Complete_Dataset_Samples$any_thyroid_problem_dummy), correct = F)
+
+chisq.test(as.factor(Complete_Dataset_Samples$Education), as.factor(Complete_Dataset_Samples$any_thyroid_problem_dummy), correct = F)
+
+chisq.test(as.factor(Complete_Dataset_Samples$Ethnicity), as.factor(Complete_Dataset_Samples$any_thyroid_problem_dummy), correct = F)
+
+chisq.test(as.factor(Complete_Dataset_Samples$Farmer), as.factor(Complete_Dataset_Samples$any_thyroid_problem_dummy), correct = F)
+
+chisq.test(as.factor(Complete_Dataset_Samples$Water_all), as.factor(Complete_Dataset_Samples$any_thyroid_problem_dummy), correct = F)
+
+chisq.test(as.factor(Complete_Dataset_Samples$Pesticides), as.factor(Complete_Dataset_Samples$any_thyroid_problem_dummy), correct = F)
+
+chisq.test(as.factor(Complete_Dataset_Samples$Race), as.factor(Complete_Dataset_Samples$any_thyroid_problem_dummy), correct = F)
+
+chisq.test(as.factor(Complete_Dataset_Samples$Smoking_Status), as.factor(Complete_Dataset_Samples$any_thyroid_problem_dummy), correct = F)
+
+chisq.test(as.factor(Complete_Dataset_Samples$Below_Pov), as.factor(Complete_Dataset_Samples$any_thyroid_problem_dummy), correct = F)
+
+chisq.test(as.factor(Complete_Dataset_Samples$Lived_in_Yuma), as.factor(Complete_Dataset_Samples$any_thyroid_problem_dummy), correct = F)
+
+chisq.test(as.factor(Complete_Dataset_Samples$thyroid_med), as.factor(Complete_Dataset_Samples$any_thyroid_problem_dummy), correct = F)
+
+chisq.test(as.factor(Complete_Dataset_Samples$Site), as.factor(Complete_Dataset_Samples$any_thyroid_problem_dummy), correct = F)
+
+t.test(Complete_Dataset_Samples$age[Complete_Dataset_Samples$any_thyroid_problem_dummy == 1], Complete_Dataset_Samples$age[Complete_Dataset_Samples$any_thyroid_problem_dummy == 0])
+
+t.test(Complete_Dataset_Samples$Weight[Complete_Dataset_Samples$any_thyroid_problem_dummy == 1], Complete_Dataset_Samples$Weight[Complete_Dataset_Samples$any_thyroid_problem_dummy == 0])
+
+t.test(Complete_Dataset_Samples$bmi[Complete_Dataset_Samples$any_thyroid_problem_dummy == 1], Complete_Dataset_Samples$bmi[Complete_Dataset_Samples$any_thyroid_problem_dummy == 0])
+
 ```

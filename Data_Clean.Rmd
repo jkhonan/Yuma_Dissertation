@@ -8,13 +8,22 @@ output: html_document
 
 #Data Cleaning
 
-Note: This is the first code to be run for this analysis.
+Note: This is the first Rmd code to be run prior to the data analysis.
 
 ```{r settingup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-## Importing Data
+## Required libraries
 library(readxl)
-Metals <- read_excel("~/Desktop/Yuma Project/Yuma - R Project/Yuma Metals Project_EMR_Editted 23Aug2021 mental health & ID removed.xlsx", sheet = "Original_Uneditted")
+library(writexl)
+library(dplyr)
+library(fastDummies)
+library(ggforce)
+
+#Setting WD
+setwd("~/Desktop/Yuma Project/Yuma - R Project/")
+
+## Importing Data
+Metals <- read_excel("~/Desktop/Yuma Project/Yuma - R Project/Yuma Metals Project_EMR_Editted 23Aug2021 mental health & ID removed.xlsx", sheet = "Original_Uneditted") #This dataset includes demographic information for Yuma study
 
 #Notes: Difference Between Metals and Metalloids
   #Metals have unique metallic properties such as shiny appearance, high density, higher melting points and electric conductivity. 
@@ -23,13 +32,13 @@ Metals <- read_excel("~/Desktop/Yuma Project/Yuma - R Project/Yuma Metals Projec
 
 Creatinine <- read_excel("~/Desktop/Yuma Project/Yuma - R Project/2021-0072_Urinary Creatinine Results.xlsx", skip=6)
 Perchlorate <- read_excel("~/Desktop/Yuma Project/Yuma - R Project/2021-0072_Urinary Perchlorate Report.xlsx", skip=7)
+
+#For this study, we included people who had either SR or EMR data regarding thyroid diagnoses and completed a demographic questionnaire. TOTAL N WILL REFLECT THIS NUMBER.
 ```
 
 ## Data Cleaning
 ```{r dataclean}
-library(dplyr)
-
-#Metals Data
+#Metals Data / Demographic Data
 #Reformating Date Data
 Metals$Date <- as.Date(as.numeric(Metals$Date), origin = "1899-12-30")
 Metals$DOB <- as.Date(as.numeric(Metals$DOB), origin = "1899-12-30")
@@ -55,6 +64,7 @@ Metals$Health_consult[Metals$Health_consult==32] <- 2
 Metals$Health_consult[Metals$Health_consult==33] <- 3
 Metals$Health_consult[Metals$Health_consult==34] <- 4
 Metals$Health_consult[Metals$Health_consult==35] <- 5
+
 #Health_consult_place -	Blank and “.”  - Missing data
 #Health options/Medical conditions -	1= Yes, 2= No, 3= Don’t know, 4= Refused 
 #HTN, HTN_hx_meds, Cholesterol, Cholesterol_meds -	5= Yes, 6= No, 7= Don’t know 
@@ -87,17 +97,19 @@ Metals <- cbind(Metals2, Metals3)
 remove(Metals2)
 remove(Metals3)
 #Participant C1045 was 9/4/2018. This is obviously a mistake. Need to ask Mark to see if he can find the correct birthdate elsewhere.
+#This person did not have an EMR, and CSF is not able to verify birthday.
 
 Metals$Date[Metals$Date=="2013-01-04"] <- "2018-09-04"
 
-Metals <- Metals %>%
-  filter(!is.na(DOB_year))
+#Metals <- Metals %>%
+#  filter(!is.na(DOB_year))
 
-#Perchlorate Data
+#Perchlorate and Creatinine Data
 Creatinine$`Sample ID` <- gsub("YRMC-", "Y1", Creatinine$`Sample ID`)
 Perchlorate$`Sample ID` <- gsub("YRMC-", "Y1", Perchlorate$`Sample ID`)
 
 Urine_Perch_Creat <- merge(Creatinine, Perchlorate, by=c("Sample ID"), all = T)
+
 Urine_Perch_Creat <- as.data.frame(Urine_Perch_Creat)
 Urine_Perch_Creat <- Urine_Perch_Creat[, c("Sample ID", "Result.x", "LOD.x", "Result.y", "LOD.y")]
 unique(Creatinine$Units)
@@ -114,11 +126,58 @@ Urine_Perch_Creat$ID <- substr(as.character(Urine_Perch_Creat$Sample_ID),7,11)
 #I will remove the folks that don't have any data for creatinine or perchlorate since they aren't particularly helpful
 Urine_Perch_Creat <- Urine_Perch_Creat %>% 
   filter(!(is.na(Result_C) & is.na(Result_P_ng_mL)))
+
+Urine_Perch_Creat %>% 
+  filter(!is.na(Result_P_ng_mL)) %>% 
+  summarize("Number Part. with Perchlorate"=length(unique(Sample_ID)))
+
+Urine_Perch_Creat %>% 
+  filter(!is.na(Result_C_mg_dL)) %>% 
+  summarize("Number Part. with Creatinine"=length(unique(Sample_ID)))
+```
+#Round 2 with Log Transformations
+
+## Updating Metal/Metalloid Concentrations for LOD
+```{r lod}
+Metals_LOD <- read_excel("~/Desktop/Yuma Project/Yuma - R Project/Yuma Metals Project_EMR_Editted 23Aug2021 mental health & ID removed.xlsx", sheet = "Instrument Limit of Detection")
+
+for (i in 1:nrow(Metals)) {
+  if (Metals$ID[i] == Metals_LOD$ID[i]) {#Check if ID matches
+    if (!is.na(Metals$Mn55[i]) && Metals$Mn55[i] < Metals_LOD$Mn55[i]) {#Check if value in Metals is less than in Metals_LOD
+      Metals$Mn55[i] <- Metals_LOD$Mn55[i]/sqrt(2) #Replace the value with LOD/sqrt(2) if yes
+    }
+    if (!is.na(Metals$Cu65[i]) && Metals$Cu65[i] < Metals_LOD$Cu65[i]) {
+      Metals$Cu65[i] <- Metals_LOD$Cu65[i]/sqrt(2) 
+    }
+    if (!is.na(Metals$Cd111[i]) && Metals$Cd111[i] < Metals_LOD$Cd111[i]) {
+      Metals$Cd111[i] <- Metals_LOD$Cd111[i]/sqrt(2) 
+    }
+    if (!is.na(Metals$Hg202[i]) && Metals$Hg202[i] < Metals_LOD$Hg202[i]) {
+      Metals$Hg202[i] <- Metals_LOD$Hg202[i]/sqrt(2) 
+    }
+    if (!is.na(Metals$Pb208[i]) && Metals$Pb208[i] < Metals_LOD$Pb208[i]) {
+      Metals$Pb208[i] <- Metals_LOD$Pb208[i]/sqrt(2)
+    }
+    if (!is.na(Metals$U238[i]) && Metals$U238[i] < Metals_LOD$U238[i]) {
+      Metals$U238[i] <- Metals_LOD$U238[i]/sqrt(2) 
+    }
+  }
+} #This was annoying and not super helpful without more details from the Jonathan Credo, who completed this lab analysis but who did not provide information about the LODs other than the manual replacement in excel. This code only works for the LODs that he input individually.
+
+#Heard back on 6/19/24 regarding the missing LODs. Estimates for Mn LOD is 0.61 ug/g and for Pb208 is 0.04 ug/g. Redoing these analysis to incorporate this information...
+
+sum(is.na(Metals$Pb208))
+Metals$Pb208 <- ifelse(Metals$Pb208<0.04, 0.04/sqrt(2), Metals$Pb208) #Can do this since there are no NAs.
+sum(Metals$Pb208<0.03)#3/211
+
+
+sum(is.na(Metals$Mn55))
+Metals$Mn55 <- ifelse(Metals$Mn55<0.61, 0.61/sqrt(2), Metals$Mn55) #Can do this since there are no NAs.
+sum(Metals$Mn55<0.44) #89/211
 ```
 
 ## Wondering About Recodes
 ```{r recoded}
-
 Metals[grepl('recode', colnames(Metals))]
 
 #It looks like Jonathan Credo (who did the recodes?) maybe tried to create dummy variables from the categorical variables?
@@ -127,8 +186,6 @@ Metals[grepl('recode', colnames(Metals))]
 #There are also thyroid variables with the suffix _D that look like they are dummy variables.
 Metals[grepl('_D', colnames(Metals))]
 #These ones include "don't know" and "prefer not to answer" in the "No" category.
-
-
 ```
 
 ### Metal Concentrations
@@ -146,17 +203,21 @@ colnames(Metals)[colnames(Metals) == "Fe_57"] <- "Fe57"
 ```{r combined}
 #Combining Metal and Perchlorate Data for single dataframe
 All_Data <- merge(Metals, Urine_Perch_Creat, by = "ID", all = TRUE)
-All_Data <- All_Data %>% 
-  filter(!is.na(DOB_year))
 
-test <- All_Data[,c("ID","Mn55",  "Cu65", "Cd111", "Hg202", "Pb206", "Pb207", "PB208", "U238", "Result_C_mg_dL", "Result_P_ng_mL")]
-sum(is.na(test$Mn55) & is.na(test$Cu65) & is.na(test$Cd111) & is.na(test$Hg202) & is.na(test$Pb206) & is.na(test$Pb207) & is.na(test$PB208) & is.na(test$U238) & is.na(test$Result_C_mg_dL) & is.na(test$Result_P_ng_mL))
+Testing_Data_Clean <- write_xlsx(All_Data, "TEST_All_Data.xlsx")
+Testing_Data_Clean <- All_Data
 
-test <- All_Data[,c("ID","Mn55",  "Cu65", "Cd111", "Hg202", "Pb206", "Pb207", "PB208", "U238", "Result_C_mg_dL", "Result_P_ng_mL", "thyroid_prob", "hypothyroid", "emr_thyroid_problem", "emr_hypothyroidism")]
-sum(is.na(test$Mn55) & is.na(test$Cu65) & is.na(test$Cd111) & is.na(test$Hg202) & is.na(test$Pb206) & is.na(test$Pb207) & is.na(test$PB208) & is.na(test$U238) & is.na(test$Result_C_mg_dL) & is.na(test$Result_P_ng_mL) & is.na(test$thyroid_prob) & is.na(test$hypothyroid) & is.na(test$emr_thyroid_problem) & is.na(test$emr_hypothyroidism))
-#There are 24 people who do not have any data for hair metals nor perchlorate information.
+#All_Data <- All_Data %>% 
+#  filter(!is.na(DOB_year))
+#Age/DOB information is not provided for the following participants: C1050, C1059, R1048, R1083. These participants do not have any associated survey data. Same for C1104, Y1008, and Y1015.
+
+test <- All_Data[,c("ID","Mn55",  "Cu65", "Cd111", "Hg202", "Pb206", "Pb207", "Pb208", "U238", "Result_C_mg_dL", "Result_P_ng_mL")]
+sum(is.na(test$Mn55) & is.na(test$Cu65) & is.na(test$Cd111) & is.na(test$Hg202) & is.na(test$Pb206) & is.na(test$Pb207) & is.na(test$Pb208) & is.na(test$U238) & is.na(test$Result_C_mg_dL) & is.na(test$Result_P_ng_mL))
+
+test <- All_Data[,c("ID","Mn55",  "Cu65", "Cd111", "Hg202", "Pb206", "Pb207", "Pb208", "U238", "Result_C_mg_dL", "Result_P_ng_mL", "thyroid_prob", "hypothyroid", "emr_thyroid_problem", "emr_hypothyroidism")]
+sum(is.na(test$Mn55) & is.na(test$Cu65) & is.na(test$Cd111) & is.na(test$Hg202) & is.na(test$Pb206) & is.na(test$Pb207) & is.na(test$Pb208) & is.na(test$U238) & is.na(test$Result_C_mg_dL) & is.na(test$Result_P_ng_mL) & is.na(test$thyroid_prob) & is.na(test$hypothyroid) & is.na(test$emr_thyroid_problem) & is.na(test$emr_hypothyroidism))
+#There are 26 people who do not have any data for hair metals nor perchlorate information.
 #There are 2 people who do not have metal, perchlorate, or thyroid information.
-remove(test)
 
 #Fixing column names and missing site data
 All_Data$Site.x[All_Data$ID == 'C1050'] <- 1
@@ -189,7 +250,8 @@ All_Data$emr_thyroid_problem_fromothercolumns <- ifelse(All_Data$emr_thyroid_can
 #4=Refused
 #NA=Missing
 
-#The original coding for this variable looks like it includes "Don't know" and "Refused" options as "No" responses. I do not believe this should be the case, since these responses don't actually give us any information about the presence or absence of the diseases. So I am going to update these values here.
+#The original coding for this variable looks like it includes "Don't know" and "Refused" options as "No" responses. I do not believe this should be the case, since these responses don't actually give us any information about the presence or absence of the diseases. So I am going to update these values here. There were 320 people who responded to these questions.
+
 
 All_Data$thyroid_prob_D <- ifelse(All_Data$thyroid_prob==1, 1,
                                   ifelse(All_Data$thyroid_prob==2, 0,
@@ -222,12 +284,110 @@ All_Data$any_thyroid_problem_dummy <- ifelse(All_Data$thyroid_prob_D==1 |
                                                                  All_Data$Thyroid_cancer_D==0 & 
                                                                  All_Data$Goiter_D==0, 0,
                                                                NA))
-```
 
-```{r identifiers}
-#Oops, removing identifiers
+All_Data$SR_hypo_goit_canc <- ifelse(All_Data$Hypo_D==1 |
+                                       All_Data$Thyroid_cancer_D==1 |
+                                       All_Data$Goiter_D==1, 1,
+                                     ifelse(All_Data$Hypo_D==0 &
+                                              All_Data$Thyroid_cancer_D==0 &
+                                              All_Data$Goiter_D==0, 0,
+                                            NA))
 
-All_Data <- subset(All_Data, select = -c(anxiety,depression,bipolar,schizo,ptsd,adhd,emr_anxiety,emr_depression,emr_bipolar,emr_schizophrenia,emr_ptsd,emr_adhd_add,sc,emr_sud,emr_asd,anxiety_recode,depression_recode,schizo_recode,bipolar_recode,ptsd_recode,adhd_recode,sud, Yuma_address, address, latitude, longitude, attention_disorder)) 
+All_Data %>% 
+  summarise(n=sum(SR_hypo_goit_canc==1, na.rm = T),
+            m=sum(SR_hypo_goit_canc==0, na.rm = T),
+            hypo=sum(hypothyroid==1, na.rm = T),
+            canc=sum(thyroid_cancer==1, na.rm = T),
+            goiter=sum(goiter==1, na.rm = T),
+            hypoandgoit=sum(hypothyroid==1&goiter==1, na.rm = T),
+            hypoandcanc=sum(hypothyroid==1&thyroid_cancer==1, na.rm = T))
+
+
+All_Data$EMR_hypo_goit_canc <- ifelse(All_Data$emr_hypothyroidism==1 |
+                                       All_Data$emr_thyroid_cancer==1 |
+                                       All_Data$emr_goiter==1, 1,
+                                     ifelse(All_Data$emr_hypothyroidism==0 &
+                                              All_Data$emr_thyroid_cancer==0 &
+                                              All_Data$emr_goiter==0, 0,
+                                            NA))
+
+All_Data %>% 
+  summarise(n=sum(EMR_hypo_goit_canc==1, na.rm = T),
+            m=sum(EMR_hypo_goit_canc==0, na.rm = T),
+            hypo=sum(emr_hypothyroidism==1, na.rm = T),
+            canc=sum(emr_thyroid_cancer==1, na.rm = T),
+            goiter=sum(emr_goiter==1, na.rm = T),
+            hypoandgoit=sum(emr_hypothyroidism==1&emr_goiter==1, na.rm = T),
+            hypoandcanc=sum(emr_hypothyroidism==1&emr_thyroid_cancer==1, na.rm = T))
+
+All_Data$EMR_any_thyroid_Dummy <- ifelse(All_Data$emr_hypothyroidism==1 |
+                                           All_Data$emr_hyperthyroidism==1|
+                                           All_Data$emr_thyroid_cancer==1 |
+                                           All_Data$emr_goiter==1 |
+                                           All_Data$emr_thyroid_problem==1,  1,
+                                     ifelse(All_Data$emr_hypothyroidism==0 &
+                                              All_Data$emr_hyperthyroidism==0 &
+                                              All_Data$emr_thyroid_cancer==0 &
+                                              All_Data$emr_goiter==0 &
+                                              All_Data$emr_thyroid_problem==0, 0,
+                                            NA))
+
+#All_Data$any_thyroid_Dummy_EMR_or_SR <- ifelse(All_Data$emr_hypothyroidism==1 |
+#                                                 All_Data$emr_hyperthyroidism==1|
+#                                                 All_Data$emr_thyroid_cancer==1 |
+#                                                 All_Data$emr_goiter==1 |
+#                                                 All_Data$emr_thyroid_problem==1 |
+#                                                 All_Data$thyroid_prob_D==1 |
+#                                                 All_Data$Hyper_D==1 | 
+#                                                 All_Data$Hypo_D==1 | 
+#                                                 All_Data$Thyroid_cancer_D==1 | 
+#                                                 All_Data$Goiter_D==1,  1,
+#                                     ifelse(All_Data$emr_hypothyroidism==0 &
+#                                              All_Data$emr_hyperthyroidism==0 &
+#                                              All_Data$emr_thyroid_cancer==0 &
+#                                              All_Data$emr_goiter==0 &
+#                                              All_Data$emr_thyroid_problem==0 &
+#                                              All_Data$thyroid_prob_D==0 &
+#                                              All_Data$Hyper_D==0 & 
+#                                              All_Data$Hypo_D==0 & 
+#                                              All_Data$Thyroid_cancer_D==0 & 
+#                                              All_Data$Goiter_D==0, 0,
+#                                            NA))
+
+#All_Data$any_thyroid_Dummy_EMR_or_SR <- ifelse(All_Data$any_thyroid_problem_dummy == 1 |
+#                                               All_Data$EMR_any_thyroid_Dummy == 1, 1,
+#                                               ifelse(All_Data$any_thyroid_problem_dummy == 0 &
+#                                                      All_Data$EMR_any_thyroid_Dummy == 0, 0,
+#                                                      ifelse(All_Data$any_thyroid_problem_dummy == 0 & is.na(All_Data$EMR_any_thyroid_Dummy), 0, ifelse(is.na(All_Data$any_thyroid_problem_dummy) & is.na(All_Data$EMR_any_thyroid_Dummy), NA, NA))))
+
+#All_Data$any_thyroid_Dummy_EMR_or_SR <- ifelse(All_Data$any_thyroid_problem_dummy == 1 |
+#                                               All_Data$EMR_any_thyroid_Dummy == 1, 1,
+#                                               ifelse(All_Data$any_thyroid_problem_dummy == 0 &
+#                                                      All_Data$EMR_any_thyroid_Dummy %in% c(0, NA), 0,
+#                                                      NA))
+
+#I don't know why the above aren't working, but let's try a different approach
+All_Data <- All_Data %>%
+  mutate(any_thyroid_Dummy_EMR_or_SR = case_when(
+    any_thyroid_problem_dummy == 1 | EMR_any_thyroid_Dummy == 1 ~ 1,
+    any_thyroid_problem_dummy == 0 & EMR_any_thyroid_Dummy == 0 ~ 0,
+    any_thyroid_problem_dummy == 0 & is.na(EMR_any_thyroid_Dummy) ~ 0,
+    is.na(any_thyroid_problem_dummy) & is.na(EMR_any_thyroid_Dummy) ~ NA_real_, TRUE ~ NA_real_)) #Cool, this worked better.
+
+sum(All_Data$any_thyroid_problem_dummy==1, na.rm = T) #145, does not match Bob's paper that says 147.
+sum(All_Data$any_thyroid_problem_dummy==0, na.rm = T) #172
+sum(is.na(All_Data$any_thyroid_problem_dummy)) #13 - These people need to be excluded
+
+sum(All_Data$EMR_any_thyroid_Dummy==1, na.rm = T) #138
+sum(All_Data$EMR_any_thyroid_Dummy==0, na.rm = T) #114
+sum(is.na(All_Data$EMR_any_thyroid_Dummy)) #78
+
+sum(All_Data$any_thyroid_Dummy_EMR_or_SR==1, na.rm = T) #157
+sum(All_Data$any_thyroid_Dummy_EMR_or_SR==0, na.rm = T) #161
+sum(is.na(All_Data$any_thyroid_Dummy_EMR_or_SR)) #12
+
+
+
 ```
 
 ```{r occupation}
@@ -288,7 +448,7 @@ occswitch <- function(x){
          'Estilista' = '39' ,
          'Secretary' = '43' ,
          'Supervisor' = '11' ,
-         'Cooler' = NA ,
+         'Cooler' = '0' ,
          'Home maker' = '0' ,
          'Construcction' = '47' ,
          'Jubilado' = '0' ,
@@ -301,7 +461,7 @@ occswitch <- function(x){
          'Studiante' = '0' ,
          'Front desk' = '43' ,
          'Ninera' = '39' ,
-         'Trabajo propio' = NA ,
+         'Trabajo propio' = '0' ,
          'Libreria' = '25' ,
          'Surgery scheduler' = '43' ,
          'Diagnostic scheduler' = '43' ,
@@ -316,10 +476,10 @@ occswitch <- function(x){
          'Bookkeeper payroll specialist' = '43' ,
          'Operator/Dispatcher' = '43' ,
          'Cna Caregiver' = '31' ,
-         'Not sure' = '0' ,
+         'Not sure' = NA ,
          'Education' = '25' ,
          'Ama de casa.' = '0' ,
-         'House keeping' = '0' ,
+         'House keeping' = '37' ,
          'Obrero' = '45' ,
          'Desabilitada' = '0' ,
          'Bookkeeper' = '43' ,
@@ -339,7 +499,7 @@ occswitch <- function(x){
          'Patient access coordinator' = '43' ,
          'ESS TECH @ YESD' = '25' ,
          'Retired art teacher' = '0' ,
-         'Customer service' = '43' ,
+         'Customer service' = '41' ,
          'Registered medical assistant' = '31' ,
          'Registered nurse' = '29' ,
          'Administrative assistant' = '43' ,
@@ -347,7 +507,7 @@ occswitch <- function(x){
          'Disabled' = '0' ,
          'N/A' = NA ,
          'Health facilitator' = '21' ,
-         'Housing assistent' = '43' ,
+         'Housing assistent' = '21' ,
          'Program Coordinator' = '11' ,
          'Public adminitrator' = '11' ,
          'Health promoter' = '21' ,
@@ -363,9 +523,9 @@ occswitch <- function(x){
          'Not employed' = '0' ,
          'Farm worker' = '45' ,
          'Janitor' = '37' ,
-         'None' = NA ,
+         'None' = '0' ,
          'Sanitation' = '37' ,
-         'Construction/farmworker' = '47' ,
+         'Construction/farmworker' = '45' ,
          'Taxi driver' = '53' ,
          'Retirado' = '0' ,
          'Cajera' = '41' ,
@@ -378,13 +538,13 @@ occswitch <- function(x){
          'Health Promter' = '21' ,
          'Housekeeping' = '37' ,
          'Ama de cada' = '0' ,
-         'Outpatients' = NA ,
+         'Outpatients' = '31' ,
          'Farmacista' = '29' ,
          'Promotora' = '21' ,
          'Mantenimiento' = '49' ,
          'Truck Driver' = '53' ,
-         'Referrals' = 'NA' ,
-         'Laboratorista' = NA ,
+         'Referrals' = '43' ,
+         'Laboratorista' = '19' ,
          'Roofer' = '47' ,
          'Estuduante' = '0' ,
          'Medical assistant' = '31' ,
@@ -394,11 +554,11 @@ occswitch <- function(x){
          'Unemployed' = '0' ,
          'Electrician' = '49' ,
          'Asst operator' = '13' ,
-         'Supply' = NA ,
+         'Supply' = '51' ,
          'Archaeologist' = '19' ,
          'Clerk' = '41' ,
          'Home Maker' = '0' ,
-         'Pharmacy tech' = '29' ,
+         'Pharmacy tech' = '31' ,
          'Para Professional' = '25' ,
          'Account clerk' = '43' ,
          'Ventas' = '41' ,
@@ -422,13 +582,41 @@ occswitch <- function(x){
          'Trabajo en El campo' = '45' ,
          'Phlebotomist' = '31' ,
          'Accounting Assistant' = '43',
-         'Package Worker' = '53')
+         'Package Worker' = '51')
 }
 
 Occupation_SOC <- sapply(All_Data$Occupation, occswitch)
 Occupation_SOC <- unlist(Occupation_SOC)
 All_Data$Occupation_SOC <- Occupation_SOC
 
+#Quick counts here:
+All_Data %>% 
+  filter(ID!="Y1008" & ID!="Y1015" & ID!="R1048" & ID!="R1083" & ID!="C1050" & ID!="C1059" & ID!="C1104") %>%
+  summarise(C_0 = sum(Occupation_SOC==0, na.rm=T),
+            C_11 = sum(Occupation_SOC==11, na.rm=T),
+            C_13 = sum(Occupation_SOC==13, na.rm=T),
+            C_15 = sum(Occupation_SOC==15, na.rm=T),
+            C_17 = sum(Occupation_SOC==17, na.rm=T),
+            C_19 = sum(Occupation_SOC==19, na.rm=T),
+            C_21 = sum(Occupation_SOC==21, na.rm=T),
+            C_23 = sum(Occupation_SOC==23, na.rm=T),
+            C_25 = sum(Occupation_SOC==25, na.rm=T),
+            C_27 = sum(Occupation_SOC==27, na.rm=T),
+            C_29 = sum(Occupation_SOC==29, na.rm=T),
+            C_31 = sum(Occupation_SOC==31, na.rm=T),
+            C_33 = sum(Occupation_SOC==33, na.rm=T),
+            C_35 = sum(Occupation_SOC==35, na.rm=T),
+            C_37 = sum(Occupation_SOC==37, na.rm=T),
+            C_39 = sum(Occupation_SOC==39, na.rm=T),
+            C_41 = sum(Occupation_SOC==41, na.rm=T),
+            C_43 = sum(Occupation_SOC==43, na.rm=T),
+            C_45 = sum(Occupation_SOC==45, na.rm=T),
+            C_47 = sum(Occupation_SOC==47, na.rm=T),
+            C_49 = sum(Occupation_SOC==49, na.rm=T),
+            C_51 = sum(Occupation_SOC==51, na.rm=T),
+            C_53 = sum(Occupation_SOC==53, na.rm=T),
+            C_55 = sum(Occupation_SOC==55, na.rm=T),
+            C_NA = sum(is.na(Occupation_SOC)))
 
 #Smoking factors
 smokeswitch <- function(x){
@@ -445,10 +633,8 @@ smokeswitch <- function(x){
 tobacco_history_fact <- sapply(All_Data$tobacco_history, smokeswitch)
 All_Data$tobacco_history_fact <- unlist(tobacco_history_fact)
 
-library(fastDummies)
-
 Occ_Dummies <- dummy_cols(All_Data$Occupation_SOC)
-Occ_Dummies <- subset(Occ_Dummies, select=-c(.data_NA.1))
+#Occ_Dummies <- subset(Occ_Dummies, select=-c(.data_NA.1))
 colnames(Occ_Dummies) <- c("Occupation_SOC","Occ_NotWorking","Occ_Management", "Occ_Busn_Fin", "Occ_Comp_Math", "Occ_PhysSci", "Occ_SoclSrv", "Occ_Edu", "Occ_Healthcare", "Occ_HealthSupp", "Occ_ProtSrvc", "Occ_FoodPrep", "Occ_GroundsMaint", "Occ_PersnlCare", "Occ_Sales", "Occ_AdminSupp", "Occ_Farming", "Occ_Constr", "Occ_InstallRepair", "Occ_Production", "Occ_Transp", "Occ_Military", "Occ_NA")
 Occ_Dummies <- subset(Occ_Dummies, select = -c(Occupation_SOC))
 
@@ -468,7 +654,7 @@ All_Data$Below_Pov <- ifelse(All_Data$Num_in_household==1 & All_Data$Income<=3, 
                                                          ifelse(All_Data$Num_in_household==6 & All_Data$Income<=6, 1,
                                                                 ifelse(All_Data$Num_in_household==7 & All_Data$Income<=6, 1,
                                                                        ifelse(All_Data$Num_in_household>=8 & All_Data$Income<=7, 1,
-                               NA))))))))
+                                                                              ifelse(is.na(All_Data$Income), NA, 0)))))))))
 
 
 All_Data$Race <- ifelse(!is.na(All_Data$Race_ai_an==1), 1, 
@@ -479,6 +665,18 @@ All_Data$Race <- ifelse(!is.na(All_Data$Race_ai_an==1), 1,
                                                     ifelse(!is.na(All_Data$Race_other==1), 6,
                                                            ifelse(!is.na(All_Data$Race_dk==1), 7,
                                                                   ifelse(!is.na(All_Data$Race_refuse==1), 8, NA))))))))
+#If more than one is selected
+which(colnames(All_Data)=="Race_ai_an") #16
+which(colnames(All_Data)=="Race_refuse") #23
+All_Data$Race <- ifelse(!is.na(All_Data$Race_ai_an==1), 1, 
+                        ifelse(!is.na(All_Data$Race_asian==1), 2, 
+                               ifelse(!is.na(All_Data$Race_black==1), 3, 
+                                      ifelse(!is.na(All_Data$Race_pac_isl==1), 4, 
+                                             ifelse(!is.na(All_Data$Race_white==1), 5,
+                                                    ifelse(!is.na(All_Data$Race_other==1), 6,
+                                                           ifelse(!is.na(All_Data$Race_dk==1), 7,
+                                                                  ifelse(!is.na(All_Data$Race_refuse==1), 8,
+                                                                         ifelse(rowSums(All_Data[,16:23])>1, 9, NA)))))))))
 
 All_Data$Smoke_Former <- as.numeric(All_Data$Smoke_Former)
 All_Data$Smoke_Occasional <- as.numeric(All_Data$Smoke_Occasional)
@@ -494,9 +692,12 @@ All_Data$Smoking_Status <- ifelse(!is.na(All_Data$Smoke_Former) & All_Data$Smoke
                                   
                                   ifelse(!is.na(All_Data$Smoke_Former) & All_Data$Smoke_Former == 0 &
                                          !is.na(All_Data$Smoke_Occasional) & All_Data$Smoke_Occasional == 0 &
-                                         !is.na(All_Data$Smoke_Daily) & All_Data$Smoke_Daily == 1, 3, NA)))
+                                         !is.na(All_Data$Smoke_Daily) & All_Data$Smoke_Daily == 1, 3, 0)))
 
-
+#0 is never smoker
+#1 is former smoker
+#2 is light smoker
+#3 is heavy smoker
 
 All_Data$thyroid_med[is.na(All_Data$thyroid_med)] <- 0 #assuming that anyone who doesn't have meds listed is not taking them.
 All_Data$tsh_med[is.na(All_Data$tsh_med)] <- 0
@@ -520,5 +721,4 @@ All_Data$total_t3_med[is.na(All_Data$total_t3_med)] <- 0
 
 All_Data$Water_all <- ifelse(All_Data$Water_coffee==All_Data$Water_cooking & All_Data$Water_coffee==All_Data$Water_home & All_Data$Water_coffee==All_Data$Water_work, All_Data$Water_coffee,
                              ifelse(All_Data$Water_coffee!=All_Data$Water_cooking | All_Data$Water_coffee!=All_Data$Water_home | All_Data$Water_coffee!=All_Data$Water_work, 5, NA))
-
 ```
