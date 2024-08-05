@@ -1,0 +1,140 @@
+---
+title: "Testing_CART_Metals_Classifications"
+author: "Jenna Honan"
+date: "2024-08-05"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Now for classification t-tests
+```{r testing_class_sig}
+#Proportions tests
+
+#Cu
+#1st Split: Recruitment Site = YRMC/CSF vs RCBH
+data1_ttest <- Metals_CART_Cu[Metals_CART_Cu$`Recruitment Site` == "RCBH", ] #n=28
+data2_ttest <- Metals_CART_Cu[Metals_CART_Cu$`Recruitment Site` != "RCBH", ] #n=51
+
+proportion_RCBH <- sum(Metals_CART_Cu$`Recruitment Site`=="RCBH") / length(Metals_CART_Cu$`Recruitment Site`)
+proportion_YRMC_CSF <- sum(Metals_CART_Cu$`Recruitment Site`!="RCBH") / length(Metals_CART_Cu$`Recruitment Site`)
+
+High_Cu_RCBH <- sum(data1_ttest$`High Cu` == "High") 
+Total_n_RCBH <- nrow(data1_ttest) 
+
+High_Cu_Other <- sum(data2_ttest$`High Cu`=="High") 
+Total_n_Other <- nrow(data2_ttest) 
+
+prop.test(c(High_Cu_RCBH, High_Cu_Other), c(Total_n_RCBH, Total_n_Other)) #p-value = 0.001555
+
+
+#2nd Split: When Recruitment Site = YRMC/CSF, EMR weight < 165
+data1_ttest <- Metals_CART_Cu[Metals_CART_Cu$`Recruitment Site` != "RCBH" & !is.na(Metals_CART_Cu$`EMR Weight (lbs)`) & Metals_CART_Cu$`EMR Weight (lbs)` < 165, ] #n=9
+data2_ttest <- Metals_CART_Cu[Metals_CART_Cu$`Recruitment Site` != "RCBH" & !is.na(Metals_CART_Cu$`EMR Weight (lbs)`) & Metals_CART_Cu$`EMR Weight (lbs)` >= 165, ] #n=9
+
+High_Cu_RCBH <- sum(data1_ttest$`High Cu` == "High") 
+Total_n_RCBH <- nrow(data1_ttest) 
+
+High_Cu_Other <- sum(data2_ttest$`High Cu`=="High") 
+Total_n_Other <- nrow(data2_ttest) 
+
+prop.test(c(High_Cu_RCBH, High_Cu_Other), c(Total_n_RCBH, Total_n_Other)) #p-value = 0.3458
+
+
+#Mn
+#1st Split: Education = Advanced, High, Middle, Elementary
+data1_ttest <- Metals_CART_Mn[Metals_CART_Mn$Education == "Advanced" | 
+                                Metals_CART_Mn$Education == "High" |
+                                Metals_CART_Mn$Education == "Middle" |
+                                Metals_CART_Mn$Education == "Elementary", ] #n=43
+data2_ttest <- Metals_CART_Mn[Metals_CART_Mn$Education != "Advanced" & 
+                                Metals_CART_Mn$Education != "High" &
+                                Metals_CART_Mn$Education != "Middle" &
+                                Metals_CART_Mn$Education != "Elementary", ] #n=36
+
+High_Cu_RCBH <- sum(data1_ttest$`High Mn` == "High") #Note: too lazy to change variable_id. Sorry, world.
+Total_n_RCBH <- nrow(data1_ttest) 
+
+High_Cu_Other <- sum(data2_ttest$`High Mn`=="High") 
+Total_n_Other <- nrow(data2_ttest) 
+
+prop.test(c(High_Cu_RCBH, High_Cu_Other), c(Total_n_RCBH, Total_n_Other)) #p-value = 0.002747
+
+
+#2nd Split: When Education != Advanced, High, Middle, Elementary, Age >=45
+data1_ttest <- Metals_CART_Mn[(Metals_CART_Mn$Education != "Advanced" & 
+                                Metals_CART_Mn$Education != "High" &
+                                Metals_CART_Mn$Education != "Middle" &
+                                Metals_CART_Mn$Education != "Elementary") & Metals_CART_Mn$Age >=45, ] #n=16
+data2_ttest <- Metals_CART_Mn[(Metals_CART_Mn$Education != "Advanced" & 
+                                Metals_CART_Mn$Education != "High" &
+                                Metals_CART_Mn$Education != "Middle" &
+                                Metals_CART_Mn$Education != "Elementary") & Metals_CART_Mn$Age <45, ] #n=20
+
+High_Cu_RCBH <- sum(data1_ttest$`High Mn` == "High") 
+Total_n_RCBH <- nrow(data1_ttest) 
+
+High_Cu_Other <- sum(data2_ttest$`High Mn`=="High") 
+Total_n_Other <- nrow(data2_ttest) 
+
+prop.test(c(High_Cu_RCBH, High_Cu_Other), c(Total_n_RCBH, Total_n_Other)) #p-value = 1
+
+#U
+#1st Split: EMR Weight < 168 (NOTE: Using EMR sort of also takes into account recruitment site, since it excludes csf participants)
+data1_ttest <- Metals_CART_U[Metals_CART_U$`EMR Weight (lbs)` < 168 & !is.na(Metals_CART_U$`EMR Weight (lbs)`), ] #n=18
+data2_ttest <- Metals_CART_U[Metals_CART_U$`EMR Weight (lbs)` >= 168 & !is.na(Metals_CART_U$`EMR Weight (lbs)`), ] #n=18
+
+High_Cu_RCBH <- sum(data1_ttest$`High U` == "High") 
+Total_n_RCBH <- nrow(data1_ttest) 
+
+High_Cu_Other <- sum(data2_ttest$`High U`=="High") 
+Total_n_Other <- nrow(data2_ttest) 
+
+prop.test(c(High_Cu_RCBH, High_Cu_Other), c(Total_n_RCBH, Total_n_Other)) #p-value = 0.005541
+
+#2nd Split: When EMR Weight < 168, Education = Advance High, Other, Elementary
+data1_ttest <- Metals_CART_U[(Metals_CART_U$Education != "Advanced" | 
+                                Metals_CART_U$Education != "High" |
+                                Metals_CART_U$Education != "Other" |
+                                Metals_CART_U$Education != "Elementary") & Metals_CART_U$`EMR Weight (lbs)`<168 & !is.na(Metals_CART_U$`EMR Weight (lbs)`), ] #n=18
+
+data2_ttest <- Metals_CART_U[(Metals_CART_U$Education != "Advanced" & 
+                                Metals_CART_U$Education != "High" &
+                                Metals_CART_U$Education != "Middle" &
+                                Metals_CART_U$Education != "Elementary") & Metals_CART_U$`EMR Weight (lbs)`<168 & !is.na(Metals_CART_U$`EMR Weight (lbs)`), ] #n=7
+
+High_Cu_RCBH <- sum(data1_ttest$`High U` == "High") 
+Total_n_RCBH <- nrow(data1_ttest) 
+
+High_Cu_Other <- sum(data2_ttest$`High U`=="High") 
+Total_n_Other <- nrow(data2_ttest) 
+
+prop.test(c(High_Cu_RCBH, High_Cu_Other), c(Total_n_RCBH, Total_n_Other)) #p-value = 0.8039
+
+#2nd Split: When EMR Weight >= 168, Health Rating = Good,Poor
+data1_ttest <- Metals_CART_U[(Metals_CART_U$`General Health Rating` == "Good" | 
+                                Metals_CART_U$`General Health Rating` == "Poor") & Metals_CART_U$`EMR Weight (lbs)`>=168 & !is.na(Metals_CART_U$`EMR Weight (lbs)`), ] #n=7
+
+data2_ttest <- Metals_CART_U[(Metals_CART_U$`General Health Rating` != "Good" & 
+                                Metals_CART_U$`General Health Rating` != "Poor") & Metals_CART_U$`EMR Weight (lbs)`>=168 & !is.na(Metals_CART_U$`EMR Weight (lbs)`), ] #n=9
+
+High_Cu_RCBH <- sum(data1_ttest$`High U` == "High") 
+Total_n_RCBH <- nrow(data1_ttest) 
+
+High_Cu_Other <- sum(data2_ttest$`High U`=="High") 
+Total_n_Other <- nrow(data2_ttest) 
+
+prop.test(c(High_Cu_RCBH, High_Cu_Other), c(Total_n_RCBH, Total_n_Other)) #p-value = 0.1252
+
+#Hg
+sum(Metals_CART_Hg$`High Hg` == "High")
+4/79
+
+#Pb
+sum(Metals_CART_Pb$`High Pb` == "High") 
+7/79 = 8.9%
+
+```
+

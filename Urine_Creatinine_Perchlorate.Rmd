@@ -4204,18 +4204,120 @@ All_Data %>%
   summarise(n = sum(EMR_any_thyroid_Dummy==1),
             Below_TT3 = sum(TotalT3<0.8, na.rm = T))
 
+#Cortisol (ng/mL)
+#cortisol is time-dependent
+
+#Total T3 (ng/mL)
+#total T3 is 80–180 ng/dL = 0.8-1.8 ng/mL
 ggplot(data=subset(All_Data, !is.na(All_Data$EMR_any_thyroid_Dummy)), aes(y=as.numeric(TotalT3), x=as.factor(EMR_any_thyroid_Dummy))) +
  geom_violin(color='#ffffff') +
  geom_sina() +
-  scale_x_discrete(labels=c("1"="EMR Diagnosis", "0"="No EMR Diagnosis"))+
+  scale_x_discrete(labels=c("1"="EMR +", "0"="EMR -"))+
  theme(axis.ticks.x = element_blank(),
         panel.background = element_rect(fill = '#ffffff', color = 'black'),
         text = element_text(size=15)) +
  xlab("") +
  ylab("Total T3 (ng/mL)")+
-  geom_hline(aes(yintercept=2), color="firebrick", size=1.1)+
+  geom_hline(aes(yintercept=1.8), color="firebrick", size=1.1)+
   geom_hline(aes(yintercept=0.8), color="firebrick", size=1.1)
 
+#Free T3 (pg/mL)
+#free T3 is 2.0-4.4 pg/mL
+ggplot(data=subset(All_Data, !is.na(All_Data$EMR_any_thyroid_Dummy)), aes(y=as.numeric(fT3), x=as.factor(EMR_any_thyroid_Dummy))) +
+ geom_violin(color='#ffffff') +
+ geom_sina() +
+  scale_x_discrete(labels=c("1"="EMR +", "0"="EMR -"))+
+ theme(axis.ticks.x = element_blank(),
+        panel.background = element_rect(fill = '#ffffff', color = 'black'),
+        text = element_text(size=15)) +
+ xlab("") +
+ ylab("Free T3 (pg/mL)")+
+  geom_hline(aes(yintercept=4.4), color="firebrick", size=1.1)+
+  geom_hline(aes(yintercept=2.0), color="firebrick", size=1.1)
+
+#TSH (µIU/mL)
+#TSH is 0.4-4.0 uIU/mL
+ggplot(data=subset(All_Data, !is.na(All_Data$EMR_any_thyroid_Dummy)), aes(y=as.numeric(TSH), x=as.factor(EMR_any_thyroid_Dummy))) +
+ geom_violin(color='#ffffff') +
+ geom_sina() +
+  scale_x_discrete(labels=c("1"="EMR +", "0"="EMR -"))+
+ theme(axis.ticks.x = element_blank(),
+        panel.background = element_rect(fill = '#ffffff', color = 'black'),
+        text = element_text(size=15)) +
+ xlab("") +
+ ylab("TSH (µIU/mL)")+
+  geom_hline(aes(yintercept=4.0), color="firebrick", size=1.1)+
+  geom_hline(aes(yintercept=0.4), color="firebrick", size=1.1)
+
+#Free T4 (pg/mL)
+#free T4 is 0.8–1.8 ng/dL = 8-18 pg/mL
+ggplot(data=subset(All_Data, !is.na(All_Data$EMR_any_thyroid_Dummy)), aes(y=as.numeric(fT4), x=as.factor(EMR_any_thyroid_Dummy))) +
+ geom_violin(color='#ffffff') +
+ geom_sina() +
+  scale_x_discrete(labels=c("1"="EMR +", "0"="EMR -"))+
+ theme(axis.ticks.x = element_blank(),
+        panel.background = element_rect(fill = '#ffffff', color = 'black'),
+        text = element_text(size=15)) +
+ xlab("") +
+ ylab("Free T4 (pg/mL)")+
+  geom_hline(aes(yintercept=18), color="firebrick", size=1.1)+
+  geom_hline(aes(yintercept=8), color="firebrick", size=1.1)
+
+#Total T4 (ng/mL)
+#total T4 is 5–12 μg/dL = 50-120 ng/mL
+ggplot(data=subset(All_Data, !is.na(All_Data$EMR_any_thyroid_Dummy)), aes(y=as.numeric(TotalT4), x=as.factor(EMR_any_thyroid_Dummy))) +
+ geom_violin(color='#ffffff') +
+ geom_sina() +
+  scale_x_discrete(labels=c("1"="EMR +", "0"="EMR -"))+
+ theme(axis.ticks.x = element_blank(),
+        panel.background = element_rect(fill = '#ffffff', color = 'black'),
+        text = element_text(size=15)) +
+ xlab("") +
+ ylab("Total T4 (ng/mL)")+
+  geom_hline(aes(yintercept=120), color="firebrick", size=1.1)+
+  geom_hline(aes(yintercept=50), color="firebrick", size=1.1)
+
+#Log TSH
+#TSH is 0.4-4.0 uIU/mL
+ggplot(data=subset(All_Data, !is.na(All_Data$EMR_any_thyroid_Dummy)), aes(y=log10(as.numeric(TSH)), x=as.factor(EMR_any_thyroid_Dummy))) +
+ geom_violin(color='#ffffff') +
+ geom_sina() +
+  scale_x_discrete(labels=c("1"="EMR +", "0"="EMR -"))+
+ theme(axis.ticks.x = element_blank(),
+        panel.background = element_rect(fill = '#ffffff', color = 'black'),
+        text = element_text(size=15)) +
+ xlab("") +
+ ylab("Log-TSH")+
+  geom_hline(aes(yintercept=log10(4.0)), color="firebrick", size=1.1)+
+  geom_hline(aes(yintercept=log10(0.4)), color="firebrick", size=1.1)
+
+#Log TSH
+#TSH is 0.4-4.0 uIU/mL
+ggplot(data=subset(All_Data, !is.na(All_Data$any_thyroid_problem_dummy)), aes(y=log10(as.numeric(TSH)), x=as.factor(any_thyroid_problem_dummy))) +
+ geom_violin(color='#ffffff') +
+ geom_sina() +
+  scale_x_discrete(labels=c("1"="SR +", "0"="SR -"))+
+ theme(axis.ticks.x = element_blank(),
+        panel.background = element_rect(fill = '#ffffff', color = 'black'),
+        text = element_text(size=15)) +
+ xlab("") +
+ ylab("Log-TSH")+
+  geom_hline(aes(yintercept=log10(4.0)), color="firebrick", size=1.1)+
+  geom_hline(aes(yintercept=log10(0.4)), color="firebrick", size=1.1)
+
+#Free T4 (pg/mL)
+#free T4 is 0.8–1.8 ng/dL = 8-18 pg/mL
+ggplot(data=subset(All_Data, !is.na(All_Data$any_thyroid_problem_dummy)), aes(y=as.numeric(fT4), x=as.factor(any_thyroid_problem_dummy))) +
+ geom_violin(color='#ffffff') +
+ geom_sina() +
+  scale_x_discrete(labels=c("1"="SR +", "0"="SR -"))+
+ theme(axis.ticks.x = element_blank(),
+        panel.background = element_rect(fill = '#ffffff', color = 'black'),
+        text = element_text(size=15)) +
+ xlab("") +
+ ylab("Free T4 (pg/mL)")+
+  geom_hline(aes(yintercept=18), color="firebrick", size=1.1)+
+  geom_hline(aes(yintercept=8), color="firebrick", size=1.1)
 ```
 
 

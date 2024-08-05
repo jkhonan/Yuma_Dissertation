@@ -1,0 +1,179 @@
+---
+title: "Metals_Regressions"
+author: "Jenna Honan"
+date: "2024-07-31"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r libraries}
+library(dplyr)
+```
+
+General rule of thumb:need 10-20 observations per covariate to detect "reasonable" effect size with "reasonable" power (Frank Harrell's Regression Modeling Strategies).
+With n=79, we can reasonably use 4-8 covariates in our multiple linear regressions. To be on the conservative side, I will use up to 5.
+To save on power, I will 
+
+```{r cu_mlr}
+#Cu
+#1st Split: Recruitment Site = YRMC/CSF
+data1_ttest <- Metals_CART_Cu[Metals_CART_Cu$`Recruitment Site` == "RCBH", ] #n=28
+data2_ttest <- Metals_CART_Cu[Metals_CART_Cu$`Recruitment Site` != "RCBH", ] #n=51
+t.test(data1_ttest$`Log10 Copper`, data2_ttest$`Log10 Copper`, paired = FALSE) #p-value = 5.19e-07
+
+#2nd Splits: [[True]] Education = Advanced/None, [[False]] Weight >= 200
+data1_ttest <- Metals_CART_Cu[(Metals_CART_Cu$`Recruitment Site` != "RCBH" & (Metals_CART_Cu$`Education` == "Advanced" | Metals_CART_Cu$`Education` == "None")), ] #n=8
+data2_ttest <- Metals_CART_Cu[(Metals_CART_Cu$`Recruitment Site` != "RCBH" & Metals_CART_Cu$`Education` != "Advanced" & Metals_CART_Cu$`Education` != "None"), ] #n=43
+t.test(data1_ttest$`Log10 Copper`, data2_ttest$`Log10 Copper`, paired = FALSE) #p-value = 0.3228
+
+data1_ttest <- Metals_CART_Cu[(Metals_CART_Cu$`Recruitment Site` == "RCBH" & Metals_CART_Cu$`Weight (lbs)` >= 200), ] #n=9
+data2_ttest <- Metals_CART_Cu[(Metals_CART_Cu$`Recruitment Site` == "RCBH" & Metals_CART_Cu$`Weight (lbs)` < 200), ] #n=19
+t.test(data1_ttest$`Log10 Copper`, data2_ttest$`Log10 Copper`, paired = FALSE) #p-value = 0.8168
+
+Metals_CART_Cu$`Recruitment Site` <- relevel(Metals_CART_Cu$`Recruitment Site`, ref = "RCBH")
+model_Cu_MLR <- lm(`Log10 Copper` ~ as.factor(`Recruitment Site`) + `Weight (lbs)`, data = Metals_CART_Cu)
+
+summary(model_Cu_MLR)
+
+plot(resid <- resid(model_Cu_MLR), fitted(model_Cu_MLR),
+     xlab = "Fitted values", ylab = "Residuals",
+     main = "Residuals vs. Fitted")
+#Doesn't work well with categorical
+
+# Normal Q-Q plot
+qqPlot(resid, main = "Normal Q-Q Plot")
+
+Metals_CART_Cu %>% 
+  group_by(`Recruitment Site`) %>% 
+  summarise(n=sum(!is.na(`Recruitment Site`)))
+```
+
+```{r hg_mlr}
+#Hg
+#1st Split: Recruitment Site = YRMC/CSF
+data1_ttest <- Metals_CART_Hg[Metals_CART_Hg$`Recruitment Site` == "RCBH", ] #n=28
+data2_ttest <- Metals_CART_Hg[Metals_CART_Hg$`Recruitment Site` != "RCBH", ] #n=51
+t.test(data1_ttest$`Log10 Mercury`, data2_ttest$`Log10 Mercury`, paired = FALSE) #p-value = 8.766e-05
+
+#2nd Splits: [[True]] Weight < 156, [[False]] BMI < 34
+data1_ttest <- Metals_CART_Hg[(Metals_CART_Hg$`Recruitment Site` != "RCBH" & Metals_CART_Hg$`Weight (lbs)`<156), ] #n=12
+data2_ttest <- Metals_CART_Hg[(Metals_CART_Hg$`Recruitment Site` != "RCBH" & Metals_CART_Hg$`Weight (lbs)`>=156), ] #n=39
+t.test(data1_ttest$`Log10 Mercury`, data2_ttest$`Log10 Mercury`, paired = FALSE) #p-value = 0.2453
+
+data1_ttest <- Metals_CART_Hg[(Metals_CART_Hg$`Recruitment Site` == "RCBH" & Metals_CART_Hg$BMI<34), ] #n=21
+data2_ttest <- Metals_CART_Hg[(Metals_CART_Hg$`Recruitment Site` == "RCBH" & Metals_CART_Hg$BMI>=34), ] #n=7
+t.test(data1_ttest$`Log10 Mercury`, data2_ttest$`Log10 Mercury`, paired = FALSE) #p-value = 0.5959
+
+Metals_CART_Hg$`Recruitment Site` <- relevel(Metals_CART_Hg$`Recruitment Site`, ref = "RCBH")
+model_Hg_MLR <- lm(`Log10 Mercury` ~ as.factor(`Recruitment Site`), data = Metals_CART_Hg)
+
+summary(model_Hg_MLR)
+
+plot(resid <- resid(model_Hg_MLR), fitted(model_Hg_MLR),
+     xlab = "Fitted values", ylab = "Residuals",
+     main = "Residuals vs. Fitted")
+#Doesn't work well with categorical
+
+# Normal Q-Q plot
+qqPlot(resid, main = "Normal Q-Q Plot")
+
+Metals_CART_Hg %>% 
+  group_by(`Recruitment Site`) %>% 
+  summarise(n=sum(!is.na(`Recruitment Site`)))
+```
+
+```{r mn_mlr}
+#Mn
+#1st Split: General Health Rating = Excellent, Fair, Poor, Very Good
+data1_ttest <- Metals_CART_Mn[Metals_CART_Mn$`General Health Rating` != "Good", ] #n=46
+data2_ttest <- Metals_CART_Mn[Metals_CART_Mn$`General Health Rating` == "Good", ] #n=33
+t.test(data1_ttest$`Log10 Manganese`, data2_ttest$`Log10 Manganese`, paired = FALSE) #p-value = 0.0102
+
+#2nd Splits: [[True]] Age < 45, [[False]] Below Poverty Line = No
+data1_ttest <- Metals_CART_Mn[(Metals_CART_Mn$`General Health Rating` != "Good" & Metals_CART_Mn$Age<45), ] #n=27
+data2_ttest <- Metals_CART_Mn[(Metals_CART_Mn$`General Health Rating` != "Good" & Metals_CART_Mn$Age>=45), ] #n=19
+t.test(data1_ttest$`Log10 Manganese`, data2_ttest$`Log10 Manganese`, paired = FALSE) #p-value = 0.03067
+
+data1_ttest <- Metals_CART_Mn[(Metals_CART_Mn$`General Health Rating` == "Good" & Metals_CART_Mn$`Below 2018 Poverty Line`=="No"), ] #n=15
+data2_ttest <- Metals_CART_Mn[(Metals_CART_Mn$`General Health Rating` == "Good" & Metals_CART_Mn$`Below 2018 Poverty Line`=="Yes"), ] #n=18
+t.test(data1_ttest$`Log10 Manganese`, data2_ttest$`Log10 Manganese`, paired = FALSE) #p-value = 0.0009487
+
+Metals_CART_Mn$`General Health Rating` <- relevel(Metals_CART_Mn$`General Health Rating`, ref = "Good")
+model_Mn_MLR <- lm(`Log10 Manganese` ~ as.factor(`General Health Rating`) + Age + as.factor(`Below 2018 Poverty Line`), data = Metals_CART_Mn)
+
+summary(model_Mn_MLR)
+
+plot(resid <- resid(model_Mn_MLR), fitted(model_Mn_MLR),
+     xlab = "Fitted values", ylab = "Residuals",
+     main = "Residuals vs. Fitted")
+#Doesn't work well with categorical
+
+# Normal Q-Q plot
+qqPlot(resid, main = "Normal Q-Q Plot")
+
+Metals_CART_Mn %>% 
+  group_by(`General Health Rating`) %>% 
+  summarise(n=sum(!is.na(`General Health Rating`)))
+
+Metals_CART_Mn %>% 
+  group_by(`Below 2018 Poverty Line`) %>% 
+  summarise(n=sum(!is.na(`Below 2018 Poverty Line`)))
+```
+
+```{r pb_mlr}
+#Pb
+#1st Split: Education = Advanced, College, Other
+data1_ttest <- Metals_CART_Pb[Metals_CART_Pb$Education == "Advanced" | Metals_CART_Pb$Education == "College" | Metals_CART_Pb$Education == "Other", ] #n=33
+data2_ttest <- Metals_CART_Pb[Metals_CART_Pb$Education == "Elementary" | Metals_CART_Pb$Education == "High" | Metals_CART_Pb$Education == "Middle" | Metals_CART_Pb$Education == "None", ] #n=46
+t.test(data1_ttest$`Log10 Lead`, data2_ttest$`Log10 Lead`, paired = FALSE) #p-value = 0.004746
+
+#2nd Splits: None
+
+Metals_CART_Pb$Education <- relevel(Metals_CART_Pb$Education, ref = "None")
+model_Pb_MLR <- lm(`Log10 Lead` ~ as.factor(Education), data = Metals_CART_Pb)
+
+summary(model_Pb_MLR)
+
+plot(resid <- resid(model_Pb_MLR), fitted(model_Pb_MLR),
+     xlab = "Fitted values", ylab = "Residuals",
+     main = "Residuals vs. Fitted")
+#Doesn't work well with categorical
+
+# Normal Q-Q plot
+qqPlot(resid, main = "Normal Q-Q Plot")
+
+Metals_CART_Pb %>% 
+  group_by(Education) %>% 
+  summarise(n=sum(!is.na(Education)))
+```
+
+```{r u_mlr}
+#U
+#1st Split: Recruitment Site = CSF
+data1_ttest <- Metals_CART_U[Metals_CART_U$`Recruitment Site` == "CSF", ] #n=25
+data2_ttest <- Metals_CART_U[Metals_CART_U$`Recruitment Site` != "CSF", ] #n=54
+t.test(data1_ttest$`Log10 Uranium`, data2_ttest$`Log10 Uranium`, paired = FALSE) #p-value = 6.28e-05
+
+#2nd Splits: None
+
+Metals_CART_U$`Recruitment Site` <- relevel(Metals_CART_U$`Recruitment Site`, ref = "CSF")
+model_U_MLR <- lm(`Log10 Uranium` ~ as.factor(`Recruitment Site`), data = Metals_CART_U)
+
+summary(model_U_MLR)
+
+plot(resid <- resid(model_U_MLR), fitted(model_U_MLR),
+     xlab = "Fitted values", ylab = "Residuals",
+     main = "Residuals vs. Fitted")
+#Doesn't work well with categorical
+
+# Normal Q-Q plot
+qqPlot(resid, main = "Normal Q-Q Plot")
+
+Metals_CART_U %>% 
+  group_by(`Recruitment Site`) %>% 
+  summarise(n=sum(!is.na(`Recruitment Site`)))
+```
+

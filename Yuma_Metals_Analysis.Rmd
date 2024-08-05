@@ -330,16 +330,18 @@ ggplot(data=data.melt2, aes(x=value))+
   ylab("Frequency")+
   xlab("Log Concentration")
 
+data.melt2$variable <- factor(data.melt2$variable, levels = c("Log_Cd111", "Log_Cu65", "Log_Hg202_Imp", "Log_Mn55", "Log_Pb208", "Log_U238"))
+
 ggplot(data=data.melt2, aes(x=value)) +
-  geom_density(aes(color=variable), linewidth=2) +
-  geom_vline(data=data.melt3, aes(xintercept=median, color=variable), linewidth=1.1) +
-  facet_wrap(~variable, labeller = as_labeller(c(Log_Mn55 = "Mn", Log_Cu65 = "Cu", Log_Cd111 = "Cd", Log_Hg202_Imp = "Hg", Log_Pb208 = "Pb", Log_U238 = "U"))) +
-  ylab("Frequency") +
-  xlab("Log Concentration and Median") +
-  theme(panel.background = element_rect(fill="#ffffff"),
-        axis.line = element_line(color="#000000"),
-        text = element_text(size = 14),
-        legend.position = "none")
+    geom_density(aes(color=variable), linewidth=2) +
+    geom_vline(data=data.melt3, aes(xintercept=median, color=variable), linewidth=1.1) +
+    facet_wrap(~variable, labeller = as_labeller(c(Log_Cd111 = "Cd", Log_Mn55 = "Mn", Log_Cu65 = "Cu", Log_Hg202_Imp = "Hg", Log_Pb208 = "Pb", Log_U238 = "U"))) +
+    ylab("Frequency") +
+    xlab("Log Concentration and Median") +
+    theme(panel.background = element_rect(fill="#ffffff"),
+          axis.line = element_line(color="#000000"),
+          text = element_text(size = 14),
+          legend.position = "none")
 
 ggplot(data=data.melt, aes(y=log10(value), x=variable))+
   geom_violin(aes(fill=variable))+

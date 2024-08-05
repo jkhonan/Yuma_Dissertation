@@ -1,11 +1,11 @@
 ---
-title: "Yuma_Metals_CART_Analysis"
+title: "CART_Final"
 author: "Jenna Honan"
-date: "2023-07-18"
+date: "2024-07-29"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
+```{r setup_final, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ## Required libraries
 library(caret)
@@ -15,11 +15,20 @@ library(dplyr)
 ```
 
 # CART Analysis
-```{r CART}
+```{r CART_Final}
 #Need to read: http://www.sthda.com/english/articles/35-statistical-machine-learning-essentials/141-cart-model-decision-tree-essentials/ 
 
 #Metals$Result_C_ng_mL <- as.numeric(Metals$Result_C_mg_dL)*10000
 #Metals$C_Corrected_P <- as.numeric(Metals$Result_P_ng_mL)/Metals$Result_C_ng_mL
+
+#Simplifying income for analysis
+#at or below poverty
+#above pov but below median? $44,116 in 2018
+#at or above 2018 median
+
+Metals$Simplified_Income <- ifelse(Metals$Below_Pov==1, 1, 
+                                     ifelse(Metals$Below_Pov==0 & Metals$Income<7, 2, 
+                                            ifelse(Metals$Income>6 & Metals$Income<11, 3, NA)))
 
 
 
@@ -44,11 +53,11 @@ Residence_type,
 Own_rent,
 Homeless,
 Health_care,
-Healthcare_lastyear,
+#Healthcare_lastyear,
 Doctor_time,
 ER_visits,
 General_health,
-Health_compare,
+#Health_compare,
 Weight,
 Overweight,
 bmi,
@@ -78,11 +87,17 @@ Log_Pb208,
 #PC1,
 #PC2,
 #C_Corrected_P,
+Simplified_Income,
 any_thyroid_Dummy_EMR_or_SR
 )
 #I know it would have been faster to remove, but I wanted a visual of what all was going into the new dataframe.
 
-Metals_CART <- subset(Metals_CART, Metals_CART$any_thyroid_Dummy_EMR_or_SR==0)
+Metals_CART <- subset(Metals_CART, Metals_CART$any_thyroid_Dummy_EMR_or_SR==0) #n = 79
+
+#Removing refused or unknown answers
+unique(Metals_CART$Race) #Almost entirely white, other than one native hawaiian/pacific islander, other, don't know, and refused. Removing from analysis.
+
+Metals_CART <- subset(Metals_CART, select = -Race)
 
 
 #Tried sapply, but wasnt working so I'll do it manually
@@ -131,9 +146,10 @@ Metals_CART$Ethnicity <- as.factor(Metals_CART$Ethnicity)
 Metals_CART$Farmer <- as.factor(Metals_CART$Farmer)
 Metals_CART$Gender <- as.factor(Metals_CART$Gender)
 Metals_CART$General_health <- as.factor(Metals_CART$General_health)
+Metals_CART$Simplified_Income <- as.factor(Metals_CART$Simplified_Income)
 Metals_CART$Health_care <- as.factor(Metals_CART$Health_care)
-Metals_CART$Health_compare <- as.factor(Metals_CART$Health_compare)
-Metals_CART$Healthcare_lastyear <- as.factor(Metals_CART$Healthcare_lastyear)
+#Metals_CART$Health_compare <- as.factor(Metals_CART$Health_compare)
+#Metals_CART$Healthcare_lastyear <- as.factor(Metals_CART$Healthcare_lastyear)
 #Metals_CART$Income <- as.factor(Metals_CART$Income)
 Metals_CART$Lived_in_Yuma <- as.factor(Metals_CART$Lived_in_Yuma)
 #Metals_CART$Marital_status <- as.factor(Metals_CART$Marital_status)
@@ -171,11 +187,11 @@ Metals_CART <- Metals_CART %>%
     "Own or Rent" = Own_rent,
     "Ever Homeless" = Homeless,
     "Have Health Coverage Now" = Health_care,
-    "Have Health Coverage Last Year" = Healthcare_lastyear,
+    #"Have Health Coverage Last Year" = Healthcare_lastyear,
     "Time Since Dr Visit" = Doctor_time,
     "# ER Visits Last Year" = ER_visits,
     "General Health Rating" = General_health,
-    "Health Compared to Last Year" = Health_compare,
+    #"Health Compared to Last Year" = Health_compare,
     "Weight (lbs)" = Weight,
     "Ever Overweight" = Overweight,
     "BMI" = bmi,
@@ -193,6 +209,7 @@ Metals_CART <- Metals_CART %>%
     "Log10 Uranium" = Log_U238,
     "Log10 Manganese" = Log_Mn55,
     "Log10 Cadmium" = Log_Cd111,
+    "Household Income" = Simplified_Income,
     "Log10 Lead" = Log_Pb208
     #"Thyroid Case" = any_thyroid_Dummy_EMR_or_SR,
     #"Log10 EMR BMI" = Log_emr_bmi,
@@ -200,10 +217,15 @@ Metals_CART <- Metals_CART %>%
     #"Log10 Creatinine" = Log_Result_C_mg_dL,
     #"Log10 Cortisol" = Log_Cortisol
   )
+
+
+
 ```
 
 #Making the plots easier to read
 ```{r plot_updates}
+
+
 #Recruitment Site:
 Metals_CART$`Recruitment Site` <- ifelse(Metals_CART$`Recruitment Site`==1, "CSF",
                                           ifelse(Metals_CART$`Recruitment Site`==2, "RCBH",
@@ -244,13 +266,13 @@ Metals_CART$Education <- ifelse(Metals_CART$Education==1, "None",
 Metals_CART$Education <- as.factor(Metals_CART$Education)
 
 #Health Compared to last year:
-Metals_CART$`Health Compared to Last Year` <- ifelse(Metals_CART$`Health Compared to Last Year`==1, "Better", 
-                                                      ifelse(Metals_CART$`Health Compared to Last Year`==2, "Worse",
-                                                             ifelse(Metals_CART$`Health Compared to Last Year`==3, "Same",
-                                                                    ifelse(Metals_CART$`Health Compared to Last Year`==4, "Don't know",
-                                                                           ifelse(Metals_CART$`Health Compared to Last Year`==5, "Refused", NA)))))
+#Metals_CART$`Health Compared to Last Year` <- ifelse(Metals_CART$`Health Compared to Last Year`==1, "Better", 
+#                                                      ifelse(Metals_CART$`Health Compared to Last Year`==2, "Worse",
+#                                                             ifelse(Metals_CART$`Health Compared to Last Year`==3, "Same",
+#                                                                    ifelse(Metals_CART$`Health Compared to Last Year`==4, "Don't know",
+#                                                                           ifelse(Metals_CART$`Health Compared to Last Year`==5, "Refused", NA)))))
 
-Metals_CART$`Health Compared to Last Year` <- as.factor(Metals_CART$`Health Compared to Last Year`)
+#Metals_CART$`Health Compared to Last Year` <- as.factor(Metals_CART$`Health Compared to Last Year`)
 
 
 #Ethnicity:
@@ -260,17 +282,17 @@ Metals_CART$Ethnicity <- ifelse(Metals_CART$Ethnicity==1, "Hispanic",
 Metals_CART$Ethnicity <- as.factor(Metals_CART$Ethnicity)
 
 #Race:
-Metals_CART$Race <- ifelse(Metals_CART$Race==1,"American Indian or Alaska Native",
-                            ifelse(Metals_CART$Race==2, "Asian",
-                                   ifelse(Metals_CART$Race==3, "Black or AA",
-                                          ifelse(Metals_CART$Race==4, "Native Hawaiian or Pacific Islander",
-                                                 ifelse(Metals_CART$Race==5, "White",
-                                                        ifelse(Metals_CART$Race==6, "Other",
-                                                               ifelse(Metals_CART$Race==7, "Don't know",
-                                                                      ifelse(Metals_CART$Race==8, "Refused",
-                                                                             ifelse(Metals_CART$Race==9, "Multiple", NA)))))))))
+#Metals_CART$Race <- ifelse(Metals_CART$Race==1,"American Indian or Alaska Native",
+#                            ifelse(Metals_CART$Race==2, "Asian",
+#                                   ifelse(Metals_CART$Race==3, "Black or AA",
+#                                          ifelse(Metals_CART$Race==4, "Native Hawaiian or Pacific #Islander",
+#                                                 ifelse(Metals_CART$Race==5, "White",
+#                                                        ifelse(Metals_CART$Race==6, "Other",
+#                                                               ifelse(Metals_CART$Race==7, "Don't know",
+#                                                                      ifelse(Metals_CART$Race==8, #"Refused",
+#                                                                             ifelse(Metals_CART$Race==9, #"Multiple", NA)))))))))
 
-Metals_CART$Race <- as.factor(Metals_CART$Race)
+#Metals_CART$Race <- as.factor(Metals_CART$Race)
 
 #Gender
 Metals_CART$Sex <- ifelse(Metals_CART$Sex==1, "Male",
@@ -301,11 +323,11 @@ Metals_CART$`Farmwork in Last Year` <- ifelse(Metals_CART$`Farmwork in Last Year
 Metals_CART$`Farmwork in Last Year` <- as.factor(Metals_CART$`Farmwork in Last Year`)
 
 #Healthcare Last Year
-Metals_CART$`Have Health Coverage Last Year` <- ifelse(Metals_CART$`Have Health Coverage Last Year`==1, "Yes",
-                                                       ifelse(Metals_CART$`Have Health Coverage Last Year`==2, "No", 
-                                                              ifelse(Metals_CART$`Have Health Coverage Last Year`==3, "Don't Know", NA)))
+#Metals_CART$`Have Health Coverage Last Year` <- ifelse(Metals_CART$`Have Health Coverage Last Year`==1, "Yes",
+#                                                       ifelse(Metals_CART$`Have Health Coverage Last Year`==2, "No", 
+#                                                              ifelse(Metals_CART$`Have Health Coverage Last Year`==3, "Don't Know", NA)))
 
-Metals_CART$`Have Health Coverage Last Year` <- as.factor(Metals_CART$`Have Health Coverage Last Year`)
+#Metals_CART$`Have Health Coverage Last Year` <- as.factor(Metals_CART$`Have Health Coverage Last Year`)
 
 #Time in Yuma
 Metals_CART$`Time in Yuma` <- ifelse(Metals_CART$`Time in Yuma`==1, "<6mo",
@@ -341,6 +363,25 @@ Metals_CART$`Below 2018 Poverty Line` <- ifelse(Metals_CART$`Below 2018 Poverty 
                                                 ifelse(Metals_CART$`Below 2018 Poverty Line`==0, "No", NA))
 
 Metals_CART$`Below 2018 Poverty Line` <- as.factor(Metals_CART$`Below 2018 Poverty Line`)
+
+#General Health
+Metals_CART$`General Health Rating` <- ifelse(Metals_CART$`General Health Rating`==1, "Excellent",
+                                                ifelse(Metals_CART$`General Health Rating`==2, "Very good",
+                                                       ifelse(Metals_CART$`General Health Rating`==3, "Good",
+                                                              ifelse(Metals_CART$`General Health Rating`==4, "Fair",
+                                                                     ifelse(Metals_CART$`General Health Rating`==5, "Poor",
+                                                       NA)))))
+
+Metals_CART$`General Health Rating` <- as.factor(Metals_CART$`General Health Rating`)
+
+#Household Income
+Metals_CART$`Household Income` <- ifelse(Metals_CART$`Household Income`==1, "< Poverty Line",
+                                         ifelse(Metals_CART$`Household Income`==2, "< Median",
+                                                ifelse(Metals_CART$`Household Income`==3, ">= Median", NA)))
+
+Metals_CART$`Household Income` <- as.factor(Metals_CART$`Household Income`)
+
+
 ```
 
 ###Cadmium (Removed due to highly censored data)
@@ -409,7 +450,7 @@ test.data <- Metals_CART_Cu[-training.samples, ]
 
 train.data <- as.data.frame(train.data)
 
-png("CART_Cu_plot.png", width=1200, height=800, res=300)
+png("CART_Cu_plot.png", width=2500, height=1500, res=300)
 model.Cu <- rpart(`Log10 Copper` ~., data = train.data, control=rpart.control(cp=.0001))
 par(xpd = NA) # otherwise on some devices the text is clipped
 prp(model.Cu, fallen.leaves=FALSE, tweak=1.1, varlen=35, faclen=0, extra=1, uniform=TRUE, yes.text="true", no.text="false")
@@ -417,8 +458,15 @@ dev.off()
 
 printcp(model.Cu)
 
+#bestcp <- function(model) {
+#  min.index <- which.min(model$cptable[, "xerror"])
+#  return(model$cptable[min.index, "cp"])
+#}
+
+#The above didn't work. Instead, we used the cptable to identify the cp value that corresponds to the minimum cross-validation error (xerror). Then, I used this cp value directly in the prune function for all models.
+
 png("CART_Cu_plot_pruned.png", width=2500, height=1500, res=300)
-model.Cu.pruned <- prune(model.Cu, cp = 0.02)
+model.Cu.pruned <- prune(model.Cu, cp = 0.07)
 par(xpd = NA) # otherwise on some devices the text is clipped
 prp(model.Cu.pruned, fallen.leaves=FALSE, tweak=1.1, varlen=35, faclen=0, extra=1, uniform=TRUE, yes.text="true", no.text="false")
 dev.off()
@@ -449,6 +497,9 @@ sqrt(mean((pred.Cu_full - test.data$`Log10 Copper`)^2))
 
 #R-squared 
 cor(pred.Cu_full, test.data$`Log10 Copper`)^2 
+
+
+Metals_CART_Cu
 ```
 
 ###Mercury
@@ -465,11 +516,13 @@ test.data <- Metals_CART_Hg[-training.samples, ]
 
 train.data <- as.data.frame(train.data)
 
-png("CART_Hg_plot.png", width=1200, height=800, res=300)
+png("CART_Hg_plot.png", width=2500, height=1500, res=300)
 model.Hg <- rpart(`Log10 Mercury` ~., data = train.data, control=rpart.control(cp=.0001))
 par(xpd = NA) # otherwise on some devices the text is clipped
 prp(model.Hg, fallen.leaves=FALSE, tweak=1.1, varlen=35, faclen=0, extra=1, uniform=TRUE, yes.text="true", no.text="false")
 dev.off()
+
+printcp(model.Hg)
 
 png("CART_Hg_plot_pruned.png", width=2500, height=1500, res=300)
 model.Hg.pruned <- prune(model.Hg, cp = 0.02)
@@ -477,7 +530,6 @@ par(xpd = NA) # otherwise on some devices the text is clipped
 prp(model.Hg.pruned, fallen.leaves=FALSE, tweak=1.1, varlen=35, faclen=0, extra=1, uniform=TRUE, yes.text="true", no.text="false")
 dev.off()
 
-printcp(model.Hg)
 summary(model.Hg.pruned)
 
 #Testing how well tree predicts the test data
@@ -520,11 +572,13 @@ test.data <- Metals_CART_Mn[-training.samples, ]
 
 train.data <- as.data.frame(train.data)
 
-png("CART_Mn_plot.png", width=1800, height=800, res=300)
+png("CART_Mn_plot.png", width=2500, height=1500, res=300)
 model.Mn <- rpart(`Log10 Manganese` ~., data = train.data, control=rpart.control(cp=.0001))
 par(xpd = NA) # otherwise on some devices the text is clipped
 prp(model.Mn, fallen.leaves=FALSE, tweak=1.1, varlen=35, faclen=0, extra=1, uniform=TRUE, yes.text="true", no.text="false")
 dev.off()
+
+printcp(model.Mn)
 
 png("CART_Mn_plot_pruned.png", width=2500, height=1500, res=300)
 model.Mn.pruned <- prune(model.Mn, cp = 0.02)
@@ -532,7 +586,6 @@ par(xpd = NA) # otherwise on some devices the text is clipped
 prp(model.Mn.pruned, fallen.leaves=FALSE, tweak=1.1, varlen=35, faclen=0, extra=1, uniform=TRUE, yes.text="true", no.text="false")
 dev.off()
 
-printcp(model.Mn)
 summary(model.Mn.pruned)
 
 #Testing how well tree predicts the test data
@@ -575,20 +628,21 @@ test.data <- Metals_CART_Pb[-training.samples, ]
 
 train.data <- as.data.frame(train.data)
 
-png("CART_Pb_plot.png", width=1200, height=800, res=300)
+png("CART_Pb_plot.png", width=2500, height=1500, res=300)
 labels_TF <- c("true", "false")
 model.Pb <- rpart(`Log10 Lead` ~., data = train.data, control=rpart.control(cp=.0001))
 par(xpd = NA) # otherwise on some devices the text is clipped
 prp(model.Pb, fallen.leaves=FALSE, tweak=1.1, varlen=35, faclen=0, extra=1, uniform=TRUE, yes.text="true", no.text="false")
 dev.off()
 
+printcp(model.Pb)
+
 png("CART_Pb_plot_pruned.png", width=5000, height=1500, res=300)
-model.Pb.pruned <- prune(model.Pb, cp = 0.02)
+model.Pb.pruned <- prune(model.Pb, cp = 0.14)
 par(xpd = NA) # otherwise on some devices the text is clipped
 prp(model.Pb.pruned, fallen.leaves=FALSE, tweak=1.1, varlen=35, faclen=0, extra=1, uniform=TRUE, yes.text="true", no.text="false")
 dev.off()
 
-printcp(model.Pb)
 summary(model.Pb.pruned)
 
 #Testing how well tree predicts the test data
@@ -631,19 +685,20 @@ test.data <- Metals_CART_U[-training.samples, ]
 
 train.data <- as.data.frame(train.data)
 
-png("CART_U_plot.png", width=1800, height=800, res=300)
+png("CART_U_plot.png", width=2500, height=1500, res=300)
 model.U <- rpart(`Log10 Uranium` ~., data = train.data, control=rpart.control(cp=.0001))
 par(xpd = NA) # otherwise on some devices the text is clipped
 prp(model.U, fallen.leaves=FALSE, tweak=1.1, varlen=35, faclen=0, extra=1, uniform=TRUE, yes.text="true", no.text="false")
 dev.off()
 
+printcp(model.U)
+
 png("CART_U_plot_pruned.png", width=5000, height=1500, res=300)
-model.U.pruned <- prune(model.U, cp = 0.02)
+model.U.pruned <- prune(model.U, cp = 0.11)
 par(xpd = NA) # otherwise on some devices the text is clipped
 prp(model.U.pruned, fallen.leaves=FALSE, tweak=1.1, varlen=35, faclen=0, extra=1, uniform=TRUE, yes.text="true", no.text="false")
 dev.off()
 
-printcp(model.U)
 summary(model.U.pruned)
 
 #Testing how well tree predicts the test data

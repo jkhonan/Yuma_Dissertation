@@ -53,7 +53,7 @@ library(ggforce)
 library(scales)
 
 #setwd
-setwd("~/Desktop/Yuma Project/Yuma - R Project/")
+#setwd("~/Desktop/Yuma_Project/Yuma_R_Project/")
 
 ## read data
 ##filename <- c("Yuma Metals Project - EMR 19Jun20.xlsx")
@@ -1021,7 +1021,7 @@ Hist_U_Raw <- ggplot(data=All_Data, aes(x=U238))+geom_density()+
 
 
 #Just want to compare here to the original data that did not have any imputation / LOD changes:
-Original_Metals_No_Imp <- read_excel("~/Desktop/Yuma Project/Datasets/Original_Metals_No_Imp.xlsx")
+Original_Metals_No_Imp <- read_excel("~/Desktop/Yuma_Project/Datasets/Original_Metals_No_Imp.xlsx")
 Original_Metals_No_Imp %>% pivot_longer(cols = c(Mn55,Cu65,Cd111,Hg202,Pb208,U238), names_to="Metal", values_to="Concentration") %>%
     ggplot(aes(x=log10(Concentration))) + geom_density() +
          facet_wrap(~ Metal) +

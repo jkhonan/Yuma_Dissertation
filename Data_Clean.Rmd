@@ -20,18 +20,18 @@ library(fastDummies)
 library(ggforce)
 
 #Setting WD
-setwd("~/Desktop/Yuma Project/Yuma - R Project/")
+setwd("~/Desktop/Yuma_Project/Yuma_R_Project/")
 
 ## Importing Data
-Metals <- read_excel("~/Desktop/Yuma Project/Yuma - R Project/Yuma Metals Project_EMR_Editted 23Aug2021 mental health & ID removed.xlsx", sheet = "Original_Uneditted") #This dataset includes demographic information for Yuma study
+Metals <- read_excel("~/Desktop/Yuma_Project/Yuma_R_Project/Yuma Metals Project_EMR_Editted 23Aug2021 mental health & ID removed.xlsx", sheet = "Original_Uneditted") #This dataset includes demographic information for Yuma study
 
 #Notes: Difference Between Metals and Metalloids
   #Metals have unique metallic properties such as shiny appearance, high density, higher melting points and electric conductivity. 
   #However, metalloids possess both metal properties and non-metal properties. 
   #Metals are located in the left side of the periodic table while metalloids are in the middle of metals and non-metals.
 
-Creatinine <- read_excel("~/Desktop/Yuma Project/Yuma - R Project/2021-0072_Urinary Creatinine Results.xlsx", skip=6)
-Perchlorate <- read_excel("~/Desktop/Yuma Project/Yuma - R Project/2021-0072_Urinary Perchlorate Report.xlsx", skip=7)
+Creatinine <- read_excel("~/Desktop/Yuma_Project/Yuma_R_Project/2021-0072_Urinary Creatinine Results.xlsx", skip=6)
+Perchlorate <- read_excel("~/Desktop/Yuma_Project/Yuma_R_Project/2021-0072_Urinary Perchlorate Report.xlsx", skip=7)
 
 #For this study, we included people who had either SR or EMR data regarding thyroid diagnoses and completed a demographic questionnaire. TOTAL N WILL REFLECT THIS NUMBER.
 ```
@@ -139,7 +139,7 @@ Urine_Perch_Creat %>%
 
 ## Updating Metal/Metalloid Concentrations for LOD
 ```{r lod}
-Metals_LOD <- read_excel("~/Desktop/Yuma Project/Yuma - R Project/Yuma Metals Project_EMR_Editted 23Aug2021 mental health & ID removed.xlsx", sheet = "Instrument Limit of Detection")
+Metals_LOD <- read_excel("~/Desktop/Yuma_Project/Yuma_R_Project/Yuma Metals Project_EMR_Editted 23Aug2021 mental health & ID removed.xlsx", sheet = "Instrument Limit of Detection")
 
 for (i in 1:nrow(Metals)) {
   if (Metals$ID[i] == Metals_LOD$ID[i]) {#Check if ID matches

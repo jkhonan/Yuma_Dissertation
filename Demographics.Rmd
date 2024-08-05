@@ -746,7 +746,7 @@ ggplot(counts_Ethnicity, aes(x = "", y = percent, fill = factor(Ethnicity))) +
             position = position_stack(vjust = 0.5)) +
   coord_polar(theta = "y")+
   scale_fill_manual(name = "Ethnicity (%)",
-                      values = c("#607D8B", "#00008B"),
+                      values = c("#107DC0", "#D6E69F"),
                       labels = c("Hispanic", "Non-Hispanic"))+
   theme(panel.background = element_rect(fill="#ffffff"),
         axis.text = element_blank(),
@@ -835,6 +835,31 @@ ggplot(subset(counts_Age_Gender, !is.na(counts_Age_Gender$age_group2)), aes(x=fa
         text = element_text(size = 15))+
   ylab("Percent")+
   xlab("Age Group")
+
+
+counts_Gender <- All_Data %>% 
+  filter(!is.na(Gender)) %>% 
+  group_by(Gender) %>% 
+  summarise(count = n(),
+            percent = (count/323)*100)
+
+ggplot(counts_Gender, aes(x = "", y = percent, fill = factor(Gender))) +
+  geom_col() +
+  geom_text(aes(label = round(percent, 1)),
+            color = "white",
+            size=6,
+            position = position_stack(vjust = 0.5)) +
+  coord_polar(theta = "y")+
+  scale_fill_manual(name = "Sex (%)",
+                      values = c("#1A9993FF", "#370335FF"),
+                      labels = c("Male", "Female"))+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        panel.grid  = element_blank(),
+        text = element_text(size = 15))+
+  xlab("")+
+  ylab("")
 ```
 
 ```{r demo_by_hair}

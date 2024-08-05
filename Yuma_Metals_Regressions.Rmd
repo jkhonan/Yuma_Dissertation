@@ -1,0 +1,81 @@
+---
+title: "Metals_Regressions"
+author: "Jenna Honan"
+date: "2023-10-03"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Regressionz
+```{r libraries}
+## Required libraries
+library(lfe)
+```
+
+```{r bmi}
+#Testing assumptions of using a linear model
+#Normality
+hist(Metals_PCA$bmi)
+hist(log(Metals_PCA$bmi)) #better
+
+hist(Metals_PCA$PC1)
+hist(log(Metals_PCA$PC1)) #better
+
+hist(Metals_PCA$PC2) #better
+hist(log(Metals_PCA$PC2))
+
+#Linearity
+ggplot(data=all_metal_merged, aes(x=log(PC1), y=log(bmi)))+
+  geom_smooth(method = "lm", se=F)+
+  geom_point()
+
+ggplot(data=all_metal_merged, aes(x=log(PC2), y=log(bmi)))+
+  geom_smooth(method = "lm", se=F)+
+  geom_point()
+
+ggplot(data=all_metal_merged)+
+  geom_point(aes(y=log(bmi), x=PC1, color="red"))+
+  geom_point(aes(y=log(bmi), x=PC2, color="blue"))+
+  geom_smooth(aes(y=log(bmi), x=PC1, color="red"), method = "lm", se=F)+
+  geom_smooth(aes(y=log(bmi), x=PC2, color="blue"), method = "lm", se=F)+
+  xlab("PC")+
+  ylab("log(BMI)")+
+  scale_colour_discrete(name="PC", labels = c("red"="PC1", "blue"="PC2"))+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"))
+
+ggplot(data=all_metal_merged)+
+  geom_point(aes(y=log(bmi), x=log(PC1), color="red"))+
+  geom_point(aes(y=log(bmi), x=log(PC2), color="blue"))+
+  geom_smooth(aes(y=log(bmi), x=log(PC1), color="red"), method = "lm", se=F)+
+  geom_smooth(aes(y=log(bmi), x=log(PC2), color="blue"), method = "lm", se=F)+
+  xlab("log(PC)")+
+  ylab("log(BMI)")+
+  scale_colour_discrete(name="PC", labels = c("red"="PC1", "blue"="PC2"))+
+  theme(panel.background = element_rect(fill="#ffffff"),
+        axis.line = element_line(color="#000000"))
+
+#These above don't incorporate the covariates, which may change how the linearity is affected.
+
+#Independence
+#The participants' BMI and PC values are not associated with other participants in the sample.
+
+#Homoscedasticity (Constant Variance)
+
+
+
+
+
+
+BMI_reg_unadj <- lm(bmi~PC1+PC2, data=all_metal_merged)
+summary(BMI_reg_unadj)
+BMI_reg_adj <- lm(bmi~PC1+PC2+as.factor(Gender)+as.factor(Site)+age+as.factor(Ethnicity)+Smoking_Status+Pesticides, data=all_metal_merged)
+summary(BMI_reg_adj)
+
+BMI_reg_adj2 <- felm(bmi~PC1+PC2|as.factor(Gender)|as.factor(Site)+age|as.factor(Ethnicity)+Smoking_Status+Pesticides, data=all_metal_merged)
+summary(BMI_reg_adj2)
+
+```
