@@ -614,6 +614,7 @@ corrplot(Metals_Correlations)
 colnames(Metals_Correlations) <- c("Log10 Mn", "Log10 Cu", "Log10 Hg", "Log10 Pb", "Log10 U")
 rownames(Metals_Correlations) <- c("Log10 Mn", "Log10 Cu", "Log10 Hg", "Log10 Pb", "Log10 U")
 
+
 png("Metals_Corrplot.png", width=1400, height=800, res=300)
 corrplot(Metals_Correlations,
          method = "circle",
@@ -626,6 +627,9 @@ corrplot(Metals_Correlations,
 dev.off()
 
 round(Metals_Correlations, 2)
+
+
+cor.test(Metals$Log_Mn55, Metals$Log_Pb208)
 ```
 
 ### Plotting Hormone Levels Against Metal Concentrations
