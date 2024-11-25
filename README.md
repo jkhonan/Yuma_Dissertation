@@ -25,3 +25,6 @@ Data for this analysis have been previously collected for metal concentrations i
 
 PROJECT AIMS
 Model relationships between concentrations of metals (Cd, Cu, Hg, Mn, Pb, and U) measured in hair samples and demographic factors that may be related to concentration levels. Model relationships between urinary perchlorate and thyroid outcomes.
+
+STATISTICAL ANALYSES
+For Perchlorate: Data_Clean.Rmd, Demographics.Rmd, Urine_Creatinine_Perchlorate.Rmd.
